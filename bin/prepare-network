@@ -1,0 +1,77 @@
+#!/bin/sh
+# Готовит только сеть текущего проекта. Не удаляет сети и не меняет общие настройки Docker.
+set -eu
+cd "$(dirname "$0")/.."
+
+# Выбирает тот же способ запуска, что и общая команда подготовки приложения.
+if docker compose version >/dev/null 2>&1; then
+    compose() { docker compose "$@"; }
+else
+    compose() { docker-compose "$@"; }
+fi
+
+# Берёт уже разрешённое имя проекта, учитывая настройки Compose. Остальные значения не выводятся.
+configuration=$(compose config --environment)
+project=$(printf '%s\n' "$configuration" | sed -n 's/^COMPOSE_PROJECT_NAME=//p')
+case "$project" in
+    ''|*[!a-z0-9_-]*|[!a-z0-9]*)
+        echo 'Не удалось определить допустимое имя проекта для подготовки сети.' >&2
+        exit 1
+        ;;
+esac
+network="${project}_default"
+network_error=$(mktemp)
+trap 'rm -f "$network_error"' 0
+trap 'exit 1' HUP INT TERM
+
+# Повтор использует готовую сеть только при совпадении обеих отметок владельца.
+owned_network_exists() {
+    if labels=$(docker network inspect --format '{{index .Labels "com.docker.compose.project"}}:{{index .Labels "com.docker.compose.network"}}' "$network" 2>/dev/null); then
+        if [ "$labels" != "$project:default" ]; then
+            echo "Сеть $network принадлежит другому запуску. Её настройки сохранены." >&2
+            exit 1
+        fi
+        return 0
+    fi
+    return 1
+}
+
+# Docker сам отклоняет пересекающиеся диапазоны. После ошибки проверяем, не успел ли соседний запуск
+# создать нашу сеть. Чужая сеть никогда не принимается за готовый результат.
+create_network() {
+    if docker network create --driver bridge \
+        --label "com.docker.compose.project=$project" \
+        --label 'com.docker.compose.network=default' \
+        "$@" "$network" > /dev/null 2> "$network_error"; then
+        return 0
+    fi
+    owned_network_exists
+}
+
+if owned_network_exists || create_network; then
+    exit 0
+fi
+
+# Явные диапазоны нужны только при исчерпании стандартного запаса. Прочие ошибки не скрываются.
+if ! grep -Fq 'all predefined address pools have been fully subnetted' "$network_error"; then
+    cat "$network_error" >&2
+    exit 1
+fi
+
+# Проверяет до 64 небольших частных диапазонов. Занятые пропускает, не освобождая их и не трогая владельцев.
+attempt=0
+while [ "$attempt" -lt 64 ]; do
+    subnet="10.$((240 + attempt / 4)).$((attempt % 4 * 64)).0/24"
+    if create_network --subnet "$subnet"; then
+        echo "Для сети $network выбран свободный диапазон $subnet."
+        exit 0
+    fi
+    if ! grep -Fq 'Pool overlaps with other one on this address space' "$network_error"; then
+        cat "$network_error" >&2
+        exit 1
+    fi
+    attempt=$((attempt + 1))
+done
+
+echo 'Для сети проекта не найден свободный диапазон. Другие сети сохранены.' >&2
+exit 1

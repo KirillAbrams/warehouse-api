@@ -1,0 +1,9 @@
+#!/bin/sh
+# Запускает проверки оформления, типов и поведения. Любая ошибка прерывает выполнение.
+set -eu
+cd "$(dirname "$0")/.."
+if docker compose version >/dev/null 2>&1; then
+    docker compose exec -T app composer check
+else
+    docker-compose exec -T app composer check
+fi
