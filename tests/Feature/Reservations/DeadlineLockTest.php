@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Reservations;
 
-use App\Actions\Reservations\CreateReservation;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\ReservationService;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use PDO;
@@ -12,26 +12,17 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
-/**
- * Проверяет срок после настоящего ожидания блокировки другой операцией базы.
- */
 class DeadlineLockTest extends TestCase
 {
     use DatabaseMigrations;
 
-    /**
-     * Сначала дожидается готовности отдельного процесса, затем начинает двухсекундный срок и удерживает нужную
-     * запись. После наблюдаемого ожидания и окончания срока освобождает запись. Проверяет отказ перехода и
-     * сохранность количества.
-     */
     #[DataProvider('blockingCases')]
     public function test_deadline_is_checked_after_waiting_for_decision_locks(string $table, string $target): void
     {
         $owner = User::factory()->create();
         $product = Product::factory()->create();
-        $reservation = $this->app->make(CreateReservation::class)
-            ->handle($owner->id, $product->id, 2, 'deadline')
-            ->reservation;
+        $reservation = $this->app->make(ReservationService::class)
+            ->create($owner->id, $product->id, 2, 'deadline')['reservation'];
         $configuration = config('database.connections.pgsql');
         $locker = new PDO(
             "pgsql:host={$configuration['host']};port={$configuration['port']};dbname={$configuration['database']}",
@@ -149,10 +140,6 @@ class DeadlineLockTest extends TestCase
         ]);
     }
 
-    /**
-     * Задаёт ожидание товара при подтверждении и ожидание резерва при отмене. В обоих местах время должно
-     * проверяться после ожидания.
-     */
     public static function blockingCases(): array
     {
         return [['products', 'confirmed'], ['reservations', 'cancelled']];

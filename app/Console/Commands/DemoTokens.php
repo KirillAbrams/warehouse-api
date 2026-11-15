@@ -2,13 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Actions\Demo\RotateDemoTokens;
+use App\Services\DemoTokenService;
 use Illuminate\Console\Command;
 
-/**
- * Команда для получения новых ключей доступа учебных пользователей. Сами правила замены ключей находятся в
- * общей операции.
- */
 class DemoTokens extends Command
 {
     protected $signature = 'demo:tokens';
@@ -16,12 +12,11 @@ class DemoTokens extends Command
     protected $description = 'Rotate and print tokens for the two seeded demo users';
 
     /**
-     * Просит общую операцию заменить ключи. При отсутствии пользователя печатает сообщение о заполнении базы.
-     * Новые ключи выводит только после успешного сохранения всех изменений.
+     * Print new demo tokens after both replacements commit.
      */
-    public function handle(RotateDemoTokens $rotate): int
+    public function handle(DemoTokenService $rotate): int
     {
-        $tokens = $rotate->handle();
+        $tokens = $rotate->rotate();
 
         if ($tokens === null) {
             $this->error('Run php artisan db:seed first.');

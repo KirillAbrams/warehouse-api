@@ -1,33 +1,25 @@
 <?php
 
-namespace Tests\Feature\Http\Api\V1;
+namespace Tests\Feature\Http;
 
-use App\Actions\Reservations\CreateReservation;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\ReservationService;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
-/**
- * Проверяет работу после сохранения готового списка маршрутов и запуска нового процесса.
- */
 class RouteCacheTest extends TestCase
 {
     use DatabaseMigrations;
 
-    /**
-     * Создаёт временный список маршрутов и обращается через новый обработчик запросов. Проверяет допустимые и
-     * слишком большие номера, доступ по ключу, скрытие чужого резерва и отсутствие изменений остатков.
-     */
     public function test_cached_routes_preserve_id_validation_and_owner_isolation(): void
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
         $product = Product::factory()->create();
-        $reservation = $this->app->make(CreateReservation::class)
-            ->handle($owner->id, $product->id, 2, 'cached-route')
-            ->reservation;
+        $reservation = $this->app->make(ReservationService::class)
+            ->create($owner->id, $product->id, 2, 'cached-route')['reservation'];
         $cachePath = sys_get_temp_dir().'/warehouse-routes-'.bin2hex(random_bytes(8)).'.php';
         $environment = [
             ...getenv(),

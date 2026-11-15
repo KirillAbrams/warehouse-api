@@ -2,28 +2,23 @@
 
 namespace Database\Seeders;
 
-use App\Actions\Demo\RotateDemoTokens;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\DemoTokenService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use LogicException;
 
-/**
- * Заполняет новый запуск двумя пользователями и тремя товарами. Повторный запуск сохраняет существующие товары
- * и историю резервов.
- */
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * Создаёт только отсутствующие учебные записи, затем общей операцией заменяет их ключи доступа. Печатает
-     * новые ключи после успешного завершения замены. Существующее количество товара не сбрасывает.
+     * Prepare repeatable demo records and rotate their access tokens.
      */
-    public function run(RotateDemoTokens $rotate): void
+    public function run(DemoTokenService $rotate): void
     {
-        foreach (RotateDemoTokens::USERS as $name => $email) {
+        foreach (DemoTokenService::USERS as $name => $email) {
             User::query()->firstOrCreate(['email' => $email], [
                 'name' => $name,
                 'password' => bin2hex(random_bytes(32)),
@@ -42,7 +37,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        $tokens = $rotate->handle() ?? throw new LogicException('Demo users disappeared before token rotation.');
+        $tokens = $rotate->rotate() ?? throw new LogicException('Demo users disappeared before token rotation.');
 
         foreach ($tokens as $email => $token) {
             $this->command?->line($email.' '.$token);

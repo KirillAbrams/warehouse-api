@@ -1,10 +1,5 @@
 <?php
 
-/**
- * Отдельный процесс проверки сохранённого списка маршрутов. После новой загрузки приложения отправляет запросы
- * от разных пользователей и собирает ответы для родительской проверки.
- */
-
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
@@ -13,7 +8,7 @@ $app = require dirname(__DIR__, 3).'/bootstrap/app.php';
 $kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-// Отправляем запрос через новый обработчик. Между пользователями сбрасываем прежние сведения о входе.
+// Reset authentication state between requests handled by the fresh process.
 $request = function (string $method, string $path, string $token) use ($app, $kernel): array {
     $app->make('auth')->forgetGuards();
     $input = Request::create(

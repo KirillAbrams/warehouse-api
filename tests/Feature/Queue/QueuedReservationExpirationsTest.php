@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Queue;
 
-use App\Jobs\ExpireReservation;
-use App\Queries\Reservations\QueuedReservationExpirations;
+use App\Jobs\ExpireReservationJob;
+use App\Services\ReservationQueueService;
 use Illuminate\Contracts\Queue\Factory as QueueFactory;
 use Illuminate\Queue\RedisQueue;
 use Illuminate\Queue\SyncQueue;
@@ -14,15 +14,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RecordQueueProbe;
 use Tests\TestCase;
 
-/**
- * Проверяет явные отказы чтения очереди при неверной настройке или содержимом старого сообщения.
- */
 class QueuedReservationExpirationsTest extends TestCase
 {
-    /**
-     * Под именем ожидаемого соединения возвращает другой вид очереди. Проверяет понятный отказ до попытки
-     * прочитать неподходящее хранилище.
-     */
     public function test_a_non_redis_backend_is_rejected_explicitly(): void
     {
         $this->mock(QueueFactory::class, function (MockInterface $queues): void {
@@ -31,18 +24,14 @@ class QueuedReservationExpirationsTest extends TestCase
                 ->with('redis')
                 ->andReturn(new SyncQueue);
         });
-        $query = $this->app->make(QueuedReservationExpirations::class);
+        $query = $this->app->make(ReservationQueueService::class);
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Expiration dispatch requires the Redis queue.');
 
-        $query->ids();
+        $query->getQueuedReservationIds();
     }
 
-    /**
-     * Помещает в настоящую очередь старое сообщение с неподходящим значением задания. Проверяет точный отказ и
-     * полную сохранность сообщения.
-     */
     #[DataProvider('invalidLegacyCommands')]
     public function test_an_invalid_legacy_command_is_rejected_without_changing_the_queued_message(
         ?string $commandClass,
@@ -52,7 +41,7 @@ class QueuedReservationExpirationsTest extends TestCase
         $queue->clear('reservations');
 
         try {
-            $queue->push(new ExpireReservation(42), '', 'reservations');
+            $queue->push(new ExpireReservationJob(42), '', 'reservations');
             $payload = $queue->pendingJobs('reservations')->sole()->payload;
             $queue->clear('reservations');
             unset($payload['expiration_reservation_id']);
@@ -62,7 +51,7 @@ class QueuedReservationExpirationsTest extends TestCase
             $before = $queue->pendingJobs('reservations')->sole()->payload;
 
             try {
-                $this->app->make(QueuedReservationExpirations::class)->ids();
+                $this->app->make(ReservationQueueService::class)->getQueuedReservationIds();
                 $this->fail('A legacy envelope must contain the expected expiration job.');
             } catch (LogicException $exception) {
                 $this->assertSame('Invalid legacy expiration payload.', $exception->getMessage());
@@ -76,9 +65,6 @@ class QueuedReservationExpirationsTest extends TestCase
     }
 
     /**
-     * Перечисляет пустое значение и имя постороннего задания. Объект создаётся внутри проверки, чтобы
-     * подготовка списка не загружала код до начала измерения покрытия.
-     *
      * @return array<string, array{class-string<RecordQueueProbe>|null}>
      */
     public static function invalidLegacyCommands(): array

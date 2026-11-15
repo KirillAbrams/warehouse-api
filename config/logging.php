@@ -1,10 +1,5 @@
 <?php
 
-/**
- * Куда записывать сведения о работе и ошибках. В обычном запуске журнал отправляется в вывод процесса и
- * доступен через команду просмотра журналов.
- */
-
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -12,16 +7,13 @@ use Monolog\Processor\PsrLogMessageProcessor;
 
 return [
 
-    // Основное место записи сообщений о работе приложения.
     'default' => env('LOG_CHANNEL', 'stack'),
 
-    // Место записи предупреждений об устаревающих возможностях.
     'deprecations' => [
         'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
         'trace' => env('LOG_DEPRECATIONS_TRACE', false),
     ],
 
-    // Доступные виды журналов, их ограничения и способы записи.
     'channels' => [
 
         'stack' => [

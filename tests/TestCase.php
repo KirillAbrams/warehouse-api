@@ -6,15 +6,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use RuntimeException;
 
-/**
- * Общая основа проверок приложения. Не позволяет случайно запустить их на рабочей базе.
- */
 abstract class TestCase extends BaseTestCase
 {
-    /**
-     * Загружает приложение и проверяет выбранное соединение и имя базы. При любом другом имени останавливает
-     * запуск до работы с тестовыми записями.
-     */
     public function createApplication(): Application
     {
         $app = parent::createApplication();

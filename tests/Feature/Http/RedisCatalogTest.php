@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Http\Api\V1;
+namespace Tests\Feature\Http;
 
 use App\Models\Product;
 use App\Models\User;
@@ -11,17 +11,10 @@ use Illuminate\Support\Facades\Log;
 use Predis\Connection\Resource\Exception\StreamInitException;
 use Tests\TestCase;
 
-/**
- * Проверяет чтение временной копии каталога и работу при отказе её хранилища.
- */
 class RedisCatalogTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    /**
-     * Читает карточку и страницу через настоящее хранилище, затем повторяет запросы. Полные ответы должны
-     * сохраниться после записи и чтения копии.
-     */
     public function test_real_redis_round_trips_product_and_pagination_payloads(): void
     {
         $product = Product::factory()->create();
@@ -38,10 +31,6 @@ class RedisCatalogTest extends TestCase
         $this->getJson('/api/v1/products')->assertOk()->assertExactJson($firstPage->json());
     }
 
-    /**
-     * Подставляет сетевой отказ временного хранилища. Проверяет успешное чтение основной базы и запись причины
-     * в журнал для обоих видов каталога.
-     */
     public function test_catalog_falls_back_to_postgresql_when_redis_cannot_connect(): void
     {
         Log::spy();

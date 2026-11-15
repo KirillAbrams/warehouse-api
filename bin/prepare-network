@@ -1,16 +1,16 @@
 #!/bin/sh
-# Готовит только сеть текущего проекта. Не удаляет сети и не меняет общие настройки Docker.
+# Prepare only this project network without changing existing networks or daemon settings.
 set -eu
 cd "$(dirname "$0")/.."
 
-# Выбирает тот же способ запуска, что и общая команда подготовки приложения.
+# Select the same Compose entry point as setup.
 if docker compose version >/dev/null 2>&1; then
     compose() { docker compose "$@"; }
 else
     compose() { docker-compose "$@"; }
 fi
 
-# Берёт уже разрешённое имя проекта, учитывая настройки Compose. Остальные значения не выводятся.
+# Resolve the project name without exposing other configuration values.
 configuration=$(compose config --environment)
 project=$(printf '%s\n' "$configuration" | sed -n 's/^COMPOSE_PROJECT_NAME=//p')
 case "$project" in
@@ -24,7 +24,7 @@ network_error=$(mktemp)
 trap 'rm -f "$network_error"' 0
 trap 'exit 1' HUP INT TERM
 
-# Повтор использует готовую сеть только при совпадении обеих отметок владельца.
+# Reuse a network only when both Compose ownership labels match.
 owned_network_exists() {
     if labels=$(docker network inspect --format '{{index .Labels "com.docker.compose.project"}}:{{index .Labels "com.docker.compose.network"}}' "$network" 2>/dev/null); then
         if [ "$labels" != "$project:default" ]; then
@@ -36,8 +36,8 @@ owned_network_exists() {
     return 1
 }
 
-# Docker сам отклоняет пересекающиеся диапазоны. После ошибки проверяем, не успел ли соседний запуск
-# создать нашу сеть. Чужая сеть никогда не принимается за готовый результат.
+# Let Docker reject overlapping subnets and recheck ownership after failed creation.
+# A concurrent setup may have created the owned network.
 create_network() {
     if docker network create --driver bridge \
         --label "com.docker.compose.project=$project" \
@@ -52,13 +52,13 @@ if owned_network_exists || create_network; then
     exit 0
 fi
 
-# Явные диапазоны нужны только при исчерпании стандартного запаса. Прочие ошибки не скрываются.
+# Try explicit subnets only after default address pool exhaustion.
 if ! grep -Fq 'all predefined address pools have been fully subnetted' "$network_error"; then
     cat "$network_error" >&2
     exit 1
 fi
 
-# Проверяет до 64 небольших частных диапазонов. Занятые пропускает, не освобождая их и не трогая владельцев.
+# Try at most 64 private subnets without reclaiming occupied ranges.
 attempt=0
 while [ "$attempt" -lt 64 ]; do
     subnet="10.$((240 + attempt / 4)).$((attempt % 4 * 64)).0/24"

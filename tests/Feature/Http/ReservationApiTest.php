@@ -1,14 +1,14 @@
 <?php
 
-namespace Tests\Feature\Http\Api\V1;
+namespace Tests\Feature\Http;
 
-use App\Actions\Reservations\ExpireReservation;
 use App\Contracts\Clock;
-use App\Enums\ReservationStatus;
-use App\Jobs\ExpireReservation as ExpireReservationJob;
+use App\Enums\ReservationStatusEnum;
+use App\Jobs\ExpireReservationJob;
 use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\User;
+use App\Services\ReservationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -21,10 +21,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\MutableClock;
 use Tests\TestCase;
 
-/**
- * Проверяет основные правила склада через настоящие запросы приложения. После ответов сверяет записи и
- * независимые суммы количества в базе.
- */
 class ReservationApiTest extends TestCase
 {
     use LazilyRefreshDatabase;
@@ -33,10 +29,6 @@ class ReservationApiTest extends TestCase
 
     private User $owner;
 
-    /**
-     * Задаёт известное время, создаёт отдельного владельца и его ключ. Каждая проверка получает независимое
-     * начало.
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -47,9 +39,6 @@ class ReservationApiTest extends TestCase
         $this->authenticate($this->owner);
     }
 
-    /**
-     * Убирает ключ из запроса списка товаров. Проверяет отказ с постоянным кодом отсутствия доступа.
-     */
     public function test_api_requires_a_bearer_token(): void
     {
         $this->flushHeaders();
@@ -58,20 +47,12 @@ class ReservationApiTest extends TestCase
             ->assertJsonPath('error.code', 'unauthenticated');
     }
 
-    /**
-     * Не сообщает желаемый вид ответа и не передаёт ключ. Отказ всё равно должен иметь обычный вид ответа
-     * приложения.
-     */
     public function test_api_returns_json_unauthorized_without_an_accept_header(): void
     {
         $this->flushHeaders();
         $this->get('/api/v1/products')->assertUnauthorized()->assertJsonPath('error.code', 'unauthenticated');
     }
 
-    /**
-     * Создаёт резерв и повторяет запрос через три минуты. Проверяет одно удержание, одну запись и тот же
-     * первоначальный срок.
-     */
     public function test_creation_holds_stock_and_sets_an_immutable_ten_minute_deadline(): void
     {
         $product = Product::factory()->create();
@@ -86,9 +67,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 3, 2, 0);
     }
 
-    /**
-     * Передаёт недопустимое количество. Проверяет ошибку нужного поля и отсутствие удержания товара.
-     */
     #[DataProvider('invalidQuantities')]
     public function test_quantity_must_be_a_positive_json_integer(mixed $quantity): void
     {
@@ -105,18 +83,11 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 5, 0, 0);
     }
 
-    /**
-     * Перечисляет ноль, отрицательное, дробное и другие значения, которые не являются положительным целым
-     * количеством.
-     */
     public static function invalidQuantities(): array
     {
         return [[0], [-1], [1.5], [true], ['2'], [null], [[]]];
     }
 
-    /**
-     * Передаёт очень большое допустимое целое. Ожидает отказ из-за количества на складе, а не ошибку вида поля.
-     */
     public function test_large_positive_integer_quantity_is_valid_but_can_exceed_stock(): void
     {
         $product = Product::factory()->create();
@@ -124,9 +95,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 5, 0, 0);
     }
 
-    /**
-     * Проверяет обязательный заголовок защиты от повтора. Неверный ключ не должен создавать резерв.
-     */
     #[DataProvider('invalidKeys')]
     public function test_a_valid_idempotency_header_is_required(?string $key): void
     {
@@ -137,18 +105,11 @@ class ReservationApiTest extends TestCase
         $this->assertDatabaseCount('reservations', 0);
     }
 
-    /**
-     * Перечисляет отсутствие, пустоту, пробелы, слишком длинную строку и управляющий знак в ключе.
-     */
     public static function invalidKeys(): array
     {
         return [[null], [''], ['   '], [str_repeat('x', 129)], ["bad\tkey"]];
     }
 
-    /**
-     * Повторяет успешный ключ с другим количеством и товаром. Проверяет отказ и неизменность удержания,
-     * сохраняя допустимость строкового номера того же товара.
-     */
     public function test_used_key_with_different_validated_fields_is_a_conflict(): void
     {
         $product = Product::factory()->create();
@@ -167,10 +128,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($other, 5, 0, 0);
     }
 
-    /**
-     * Сначала просит слишком много товара, затем допустимое количество с тем же ключом. Второй запрос должен
-     * успешно создать резерв.
-     */
     public function test_insufficient_stock_does_not_claim_the_key(): void
     {
         $product = Product::factory()->create();
@@ -179,10 +136,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 3, 2, 0);
     }
 
-    /**
-     * После отказа неверного количества отправляет правильный запрос с тем же ключом. Ошибка проверки полей не
-     * должна занимать ключ.
-     */
     public function test_invalid_fields_do_not_claim_the_key(): void
     {
         $product = Product::factory()->create();
@@ -190,9 +143,6 @@ class ReservationApiTest extends TestCase
         $this->reserve($product)->assertCreated();
     }
 
-    /**
-     * Сначала передаёт отсутствующий товар. После отказа тот же ключ должен работать для существующего товара.
-     */
     public function test_missing_product_does_not_claim_the_key(): void
     {
         $this->postJson(
@@ -204,10 +154,6 @@ class ReservationApiTest extends TestCase
         $this->reserve(Product::factory()->create())->assertCreated();
     }
 
-    /**
-     * Создаёт по резерву для двух владельцев с одинаковой строкой ключа. Проверяет разные записи и отдельное
-     * удержание каждого.
-     */
     public function test_users_can_use_the_same_key_independently(): void
     {
         $product = Product::factory()->create();
@@ -220,10 +166,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 1, 4, 0);
     }
 
-    /**
-     * Подготавливает исходное состояние и выполняет подтверждение или отмену. Проверяет номер ответа, точную
-     * причину отказа, итоговое состояние и все счётчики товара.
-     */
     #[DataProvider('transitionCases')]
     public function test_transition_table(
         string $state,
@@ -241,7 +183,7 @@ class ReservationApiTest extends TestCase
             $this->clock->instant = $this->clock->instant->addMinutes(10);
         }
         if ($state === 'expired') {
-            $this->app->make(ExpireReservation::class)->handle($id);
+            $this->app->make(ReservationService::class)->expire($id);
         }
         $response = $this->postJson("/api/v1/reservations/{$id}/{$action}")->assertStatus($expectedStatus);
         if ($expectedCode !== null) {
@@ -258,10 +200,6 @@ class ReservationApiTest extends TestCase
         });
     }
 
-    /**
-     * Задаёт полную таблицу разрешённых и запрещённых переходов. Для отказов отдельно указаны ожидаемые коды
-     * причин.
-     */
     public static function transitionCases(): array
     {
         return [
@@ -278,10 +216,6 @@ class ReservationApiTest extends TestCase
         ];
     }
 
-    /**
-     * Завершает резерв и повторяет его создание с исходным ключом. Ответ должен содержать текущее состояние без
-     * продления срока и нового удержания.
-     */
     #[DataProvider('finalStates')]
     public function test_create_replay_returns_current_final_state_and_original_expiry(string $state): void
     {
@@ -290,7 +224,7 @@ class ReservationApiTest extends TestCase
         $id = $first->json('data.id');
         if ($state === 'expired') {
             $this->clock->instant = $this->clock->instant->addMinutes(10);
-            $this->app->make(ExpireReservation::class)->handle($id);
+            $this->app->make(ReservationService::class)->expire($id);
         } else {
             $this->postJson("/api/v1/reservations/{$id}/".($state === 'confirmed' ? 'confirm' : 'cancel'))->assertOk();
         }
@@ -300,18 +234,11 @@ class ReservationApiTest extends TestCase
         $this->assertDatabaseCount('reservations', 1);
     }
 
-    /**
-     * Перечисляет три окончательных состояния для проверки повторного создания.
-     */
     public static function finalStates(): array
     {
         return [['confirmed'], ['cancelled'], ['expired']];
     }
 
-    /**
-     * Повторяет уже успешное подтверждение или отмену после срока. Проверяет прежний результат без новых
-     * изменений.
-     */
     #[DataProvider('successfulActions')]
     public function test_repeating_successful_action_is_allowed_after_deadline(string $action): void
     {
@@ -322,18 +249,11 @@ class ReservationApiTest extends TestCase
         $this->postJson("/api/v1/reservations/{$id}/{$action}")->assertOk()->assertExactJson($first->json());
     }
 
-    /**
-     * Задаёт оба действия, успешный повтор которых остаётся допустимым после срока.
-     */
     public static function successfulActions(): array
     {
         return [['confirm'], ['cancel']];
     }
 
-    /**
-     * Меняет текущего пользователя и обращается к чужому и отсутствующему резерву. Чтение, подтверждение и
-     * отмена должны возвращать одинаковые отказы.
-     */
     public function test_foreign_and_missing_reservations_are_indistinguishable(): void
     {
         $product = Product::factory()->create();
@@ -350,10 +270,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 3, 2, 0);
     }
 
-    /**
-     * Читает резерв после срока до обработки очереди. Проверяет сохранённое удержание и отказ первого
-     * подтверждения.
-     */
     public function test_read_does_not_lazily_expire_or_release_a_due_reservation(): void
     {
         $product = Product::factory()->create();
@@ -366,16 +282,12 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 3, 2, 0);
     }
 
-    /**
-     * Выполняет задание до срока, на сроке и повторно, затем для отсутствующей записи. Количество должно
-     * вернуться только один раз.
-     */
     public function test_early_duplicate_and_old_jobs_cannot_release_stock_incorrectly(): void
     {
         $product = Product::factory()->create();
         $id = $this->reserve($product)->assertCreated()->json('data.id');
         $job = new ExpireReservationJob($id);
-        $expire = $this->app->make(ExpireReservation::class);
+        $expire = $this->app->make(ReservationService::class);
         $job->handle($expire);
         $this->assertStock($product, 3, 2, 0);
         $this->clock->instant = $this->clock->instant->addMinutes(10);
@@ -388,25 +300,17 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 5, 0, 0);
     }
 
-    /**
-     * Подтверждает резерв, затем запускает старое задание истечения. Подтверждённый расход должен остаться
-     * прежним.
-     */
     public function test_a_job_after_confirmation_keeps_the_final_consumption(): void
     {
         $product = Product::factory()->create();
         $id = $this->reserve($product)->assertCreated()->json('data.id');
         $this->postJson("/api/v1/reservations/{$id}/confirm")->assertOk();
         $this->clock->instant = $this->clock->instant->addDay();
-        (new ExpireReservationJob($id))->handle($this->app->make(ExpireReservation::class));
+        (new ExpireReservationJob($id))->handle($this->app->make(ReservationService::class));
         $this->assertStock($product, 3, 0, 2);
         $this->assertDatabaseHas('reservations', ['id' => $id, 'status' => 'confirmed']);
     }
 
-    /**
-     * Находит просроченную запись повторным поиском и проверяет постановку задания. Затем дважды обрабатывает
-     * напрямую, сохраняя однократный возврат товара.
-     */
     public function test_recovery_discovers_due_rows_without_a_previously_dispatched_job(): void
     {
         $product = Product::factory()->create();
@@ -420,10 +324,6 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 5, 0, 0);
     }
 
-    /**
-     * Проверяет размер страницы и время жизни копии. Устаревшая карточка не должна позволять резервирование
-     * сверх фактического остатка базы.
-     */
     public function test_catalog_is_paginated_bounded_and_cached_for_thirty_seconds(): void
     {
         $this->freezeTime();
@@ -447,10 +347,6 @@ class ReservationApiTest extends TestCase
         $this->getJson('/api/v1/products/999999')->assertNotFound();
     }
 
-    /**
-     * Заставляет базу отказать при создании записи резерва. Проверяет общий откат количества и ключа, затем
-     * успешный повтор после устранения отказа.
-     */
     public function test_inventory_and_key_roll_back_if_reservation_insert_fails(): void
     {
         $product = Product::factory()->create();
@@ -470,10 +366,6 @@ class ReservationApiTest extends TestCase
         $this->reserve($product)->assertCreated();
     }
 
-    /**
-     * Передаёт владельца, состояние и срок от клиента. Запрос должен завершиться отказом без создания записи и
-     * удержания.
-     */
     public function test_server_owned_fields_are_rejected(): void
     {
         $product = Product::factory()->create();
@@ -485,20 +377,12 @@ class ReservationApiTest extends TestCase
         $this->assertStock($product, 5, 0, 0);
     }
 
-    /**
-     * Выдаёт ключ выбранному тестовому пользователю и сбрасывает сохранённое состояние проверки входа.
-     * Следующий запрос должен принадлежать именно ему.
-     */
     private function authenticate(User $user): void
     {
         $this->withToken($user->createToken('test')->plainTextToken);
         Auth::forgetGuards();
     }
 
-    /**
-     * Отправляет запрос создания с нужным количеством и ключом. Общая форма запроса позволяет проверкам
-     * сосредоточиться на правилах склада.
-     */
     private function reserve(Product $product, int $quantity = 2, string $key = 'reserve-test'): TestResponse
     {
         return $this->postJson(
@@ -508,10 +392,6 @@ class ReservationApiTest extends TestCase
         );
     }
 
-    /**
-     * Сверяет все счётчики и их сумму с исходным запасом. Отдельные запросы к резервам проверяют, что удержания
-     * и подтверждённый расход действительно объясняются историей.
-     */
     private function assertStock(Product $product, int $available, int $reserved, int $confirmed): void
     {
         $product->refresh();
@@ -523,14 +403,14 @@ class ReservationApiTest extends TestCase
             $reserved,
             (int) Reservation::query()
                 ->where('product_id', $product->id)
-                ->where('status', ReservationStatus::Reserved)
+                ->where('status', ReservationStatusEnum::RESERVED)
                 ->sum('quantity')
         );
         $this->assertSame(
             $confirmed,
             (int) Reservation::query()
                 ->where('product_id', $product->id)
-                ->where('status', ReservationStatus::Confirmed)
+                ->where('status', ReservationStatusEnum::CONFIRMED)
                 ->sum('quantity')
         );
     }

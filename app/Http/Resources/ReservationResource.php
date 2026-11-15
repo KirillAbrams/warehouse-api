@@ -1,21 +1,18 @@
 <?php
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources;
 
 use App\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Задаёт открытые поля резерва. Ключ повторного запроса и сведения о владельце остаются внутри приложения.
- *
  * @mixin Reservation
  */
 class ReservationResource extends JsonResource
 {
     /**
-     * Собирает одинаковое представление для создания, чтения и завершения резерва. Даты переводятся в единый
-     * часовой пояс и сохраняют микросекунды.
+     * Expose reservation state with UTC microsecond timestamps.
      *
      * @return array<string, int|string>
      */

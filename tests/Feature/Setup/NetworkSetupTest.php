@@ -7,18 +7,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
-/**
- * Проверяет настоящие команды подготовки через отдельный процесс и управляемые ответы Docker. Не создаёт
- * сети на компьютере и сверяет не только результат, но и перечень допустимых действий.
- */
 class NetworkSetupTest extends TestCase
 {
     private string $directory;
 
-    /**
-     * Готовит отдельную копию команд и подставной Docker. Даже ошибочная проверка не должна менять настройки
-     * текущего приложения или настоящий список сетей.
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,19 +30,12 @@ class NetworkSetupTest extends TestCase
         $this->writeState([]);
     }
 
-    /**
-     * Удаляет только временную папку данной проверки. Рабочие настройки и сети компьютера не затрагиваются.
-     */
     protected function tearDown(): void
     {
         (new Filesystem)->deleteDirectory($this->directory);
         parent::tearDown();
     }
 
-    /**
-     * Воспроизводит прежнюю остановку при создании первого контейнера. Одна команда должна сама подготовить
-     * сеть до установки библиотек и дойти до запуска всех служб.
-     */
     public function test_setup_recovers_from_exhausted_pools_without_a_manual_network_command(): void
     {
         $process = $this->runCommand('setup');
@@ -62,10 +47,6 @@ class NetworkSetupTest extends TestCase
         $this->assertCallsAreScoped($state);
     }
 
-    /**
-     * Сверяет успех, отказ, повтор и занятые диапазоны с заранее заданными ответами границы Docker.
-     * Ошибки, не связанные с нехваткой адресов, не должны запускать перебор сетей.
-     */
     #[DataProvider('networkCases')]
     public function test_network_preparation_obeys_ownership_and_failure_rules(
         array $configuration,
@@ -86,10 +67,6 @@ class NetworkSetupTest extends TestCase
         }
     }
 
-    /**
-     * Перечисляет отдельные причины отказа и повтора. Ожидаемые числа попыток заданы независимо от команды
-     * подготовки, чтобы пропущенная проверка или бесконечный перебор были заметны.
-     */
     public static function networkCases(): array
     {
         return [
@@ -113,10 +90,6 @@ class NetworkSetupTest extends TestCase
         ];
     }
 
-    /**
-     * Проверяет, что при чтении настроек наружу не попадает их остальное содержимое. Эта проверка выполняется
-     * без записи команд оболочки, иначе сама запись специально показала бы подставное значение.
-     */
     public function test_configuration_values_are_not_printed(): void
     {
         $process = $this->runCommand('prepare-network', false);
@@ -124,10 +97,6 @@ class NetworkSetupTest extends TestCase
         $this->assertStringNotContainsString('do-not-print-this-value', $process->getOutput().$process->getErrorOutput());
     }
 
-    /**
-     * Создаёт разные сочетания имени и числа занятых диапазонов. Повтор подготовки должен только прочитать
-     * готовую сеть, сохраняя прежнее число созданий и выбранный диапазон.
-     */
     public function test_generated_overlap_sequences_remain_bounded_and_idempotent(): void
     {
         for ($case = 0; $case < 16; $case++) {
@@ -148,10 +117,6 @@ class NetworkSetupTest extends TestCase
         }
     }
 
-    /**
-     * Записывает исходное состояние подставной службы. Счётчики и список вызовов начинаются заново для каждого
-     * независимого случая, а не берутся из результатов проверяемой команды.
-     */
     private function writeState(array $overrides): void
     {
         file_put_contents($this->directory.'/state.json', json_encode(array_replace([
@@ -162,19 +127,11 @@ class NetworkSetupTest extends TestCase
         ], $overrides), JSON_THROW_ON_ERROR));
     }
 
-    /**
-     * Читает фактические вызовы и состояние после отдельного процесса. Эти данные позволяют заметить лишнее
-     * создание или попытку работы с другой сетью даже при успешном завершении команды.
-     */
     private function readState(): array
     {
         return json_decode(file_get_contents($this->directory.'/state.json'), true, 512, JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * Запускает неизменённую команду из временной копии. При измерении покрытия дополнительно сохраняет номера
-     * выполненных строк оболочки; обычный запуск не включает такую запись.
-     */
     private function runCommand(string $name, bool $allowTrace = true): Process
     {
         $trace = $allowTrace && getenv('NETWORK_SHELL_COVERAGE') === '1';
@@ -197,10 +154,6 @@ class NetworkSetupTest extends TestCase
         return $process;
     }
 
-    /**
-     * Разрешает только чтение и создание точной сети текущего имени. Все попытки должны нести обе отметки
-     * владельца; удаление сетей и остановка чужих служб в перечне недопустимы.
-     */
     private function assertCallsAreScoped(array $state): void
     {
         foreach ($state['calls'] as $call) {

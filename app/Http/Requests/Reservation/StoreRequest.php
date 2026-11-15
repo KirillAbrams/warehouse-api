@@ -1,20 +1,15 @@
 <?php
 
-namespace App\Http\Requests\Api\V1;
+namespace App\Http\Requests\Reservation;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ConditionalRules;
 use Illuminate\Validation\Rule;
 
-/**
- * Проверяет поля создания резерва и обязательный заголовок защиты от повтора. Владелец, состояние и даты
- * назначаются только приложением.
- */
-class StoreReservationRequest extends FormRequest
+class StoreRequest extends FormRequest
 {
     /**
-     * Добавляет заголовок защиты от повтора к проверяемым данным. Значение из тела запроса не может подменить
-     * этот заголовок.
+     * Use the required header as the authoritative idempotency key.
      *
      * @return array<string, mixed>
      */
@@ -24,8 +19,7 @@ class StoreReservationRequest extends FormRequest
     }
 
     /**
-     * Задаёт допустимые виды номера товара, положительное целое количество и требования к ключу. Отдельно
-     * запрещает все поля, которыми управляет приложение, даже если клиент передал пустое значение.
+     * Validate reservation input and reject server-owned fields.
      *
      * @return array<string, list<string|ConditionalRules>>
      */

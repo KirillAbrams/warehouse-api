@@ -1,21 +1,15 @@
 #!/usr/bin/env php
 <?php
 
-/**
- * Начальная точка команд в терминале. Загружает то же приложение и возвращает вызывающей программе номер
- * результата команды.
- */
-
 use Illuminate\Foundation\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
-// Подключаем установленные библиотеки и правила поиска классов.
+
 require __DIR__.'/vendor/autoload.php';
 
-// Собираем приложение и выполняем команду с переданными параметрами.
-/** @var Application $app */
+
 $app = require_once __DIR__.'/bootstrap/app.php';
 
 $status = $app->handleCommand(new ArgvInput);

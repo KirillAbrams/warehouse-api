@@ -1,24 +1,24 @@
 #!/bin/sh
-# Останавливает подготовку при ошибке, чтобы не запускать частично собранное приложение.
+# Stop preparation on failure.
 set -eu
 cd "$(dirname "$0")/.."
 
-# Выбирает установленный способ управления контейнерами.
+# Select the installed Compose entry point.
 if docker compose version >/dev/null 2>&1; then
     compose() { docker compose "$@"; }
 else
     compose() { docker-compose "$@"; }
 fi
 
-# Создаёт местные настройки один раз, сохраняя последующие изменения владельца.
+# Create local settings once and preserve subsequent user changes.
 if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
-# Заранее готовит свою сеть, в том числе при исчерпании стандартных диапазонов Docker.
+# Prepare the owned network, including exhausted default address pools.
 ./bin/prepare-network
 
-# Заменяет адрес посредника на адрес компьютера, доступный из контейнера.
+# Translate host proxy URLs for access from containers.
 container_proxy() {
     printf '%s' "$1" | sed -e 's@://127\.0\.0\.1:@://host.docker.internal:@' -e 's@://localhost:@://host.docker.internal:@'
 }
@@ -26,22 +26,22 @@ container_proxy() {
 task_http_proxy=$(container_proxy "${HTTP_PROXY:-${http_proxy:-}}")
 task_https_proxy=$(container_proxy "${HTTPS_PROXY:-${https_proxy:-}}")
 
-# Собирает среду и устанавливает библиотеки строго из сохранённого списка версий.
+# Build the runtime and install the locked dependencies.
 compose build --build-arg HTTP_PROXY="$task_http_proxy" --build-arg HTTPS_PROXY="$task_https_proxy" app
 compose run --rm --no-deps \
     -e HTTP_PROXY="$task_http_proxy" -e HTTPS_PROXY="$task_https_proxy" \
     -e http_proxy="$task_http_proxy" -e https_proxy="$task_https_proxy" \
     app composer install --no-interaction --prefer-dist
 
-# Создаёт ключ приложения только при его отсутствии.
+# Generate the application key only when absent.
 if ! grep -q '^APP_KEY=base64:' .env; then
     compose run --rm --no-deps app php artisan key:generate --force --no-interaction
 fi
 
-# Даёт приложению право записывать временные файлы в предназначенные для этого папки.
+# Allow runtime writes in the designated directories.
 compose run --rm --no-deps app chmod -R a+rwX storage bootstrap/cache
 
-# Готовит базу и учебные данные, затем ждёт запуска всех служб приложения.
+# Prepare demo records and wait for all application services.
 compose up -d postgres redis
 compose run --rm app php artisan migrate --force --no-interaction
 compose run --rm app php artisan db:seed --force --no-interaction

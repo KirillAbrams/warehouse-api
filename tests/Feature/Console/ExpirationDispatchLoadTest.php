@@ -6,17 +6,10 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
-/**
- * Проверяет проход диспетчера по тысяче существующих сообщений без накопления повторов.
- */
 class ExpirationDispatchLoadTest extends TestCase
 {
     use DatabaseMigrations;
 
-    /**
-     * Запускает отдельный процесс без измерителя покрытия, чтобы не исказить расход памяти и время. Проверяет
-     * два прохода, пределы времени и памяти, а также очистку созданных записей.
-     */
     public function test_a_thousand_queued_expirations_are_reconciled_without_growth(): void
     {
         $environment = [

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Запускает проверки оформления, типов и поведения. Любая ошибка прерывает выполнение.
+# Run format, type and behavior checks; stop on the first failure.
 set -eu
 cd "$(dirname "$0")/.."
 if docker compose version >/dev/null 2>&1; then

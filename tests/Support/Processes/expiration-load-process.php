@@ -1,11 +1,6 @@
 <?php
 
-/**
- * Готовит тысячу просроченных резервов и сообщений только в пустой тестовой базе. Измеряет два прохода без
- * роста очереди, затем убирает собственные записи и сообщения.
- */
-
-use App\Jobs\ExpireReservation;
+use App\Jobs\ExpireReservationJob;
 use App\Models\Product;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -48,7 +43,7 @@ try {
     $jobs = DB::table('reservations')
         ->where('user_id', $owner->id)
         ->pluck('id')
-        ->map(fn (int $id) => new ExpireReservation($id))
+        ->map(fn (int $id) => new ExpireReservationJob($id))
         ->all();
     $queue->bulk($jobs, '', 'reservations');
     unset($rows, $jobs);

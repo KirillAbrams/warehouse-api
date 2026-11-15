@@ -10,17 +10,10 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * Проверяет полную отмену замены ключей при настоящей ошибке записи базы.
- */
 class DemoTokenRotationTest extends TestCase
 {
     use DatabaseMigrations;
 
-    /**
-     * Заставляет базу отказать при записи первого или второго нового ключа. Для команды и заполнения базы
-     * сравнивает все прежние поля ключей и проверяет отсутствие частично выданных значений.
-     */
     #[DataProvider('rotationFailures')]
     public function test_insert_failure_preserves_all_tokens_and_prints_no_credentials(string $command, string $failedEmail): void
     {
@@ -55,10 +48,6 @@ class DemoTokenRotationTest extends TestCase
         $this->assertStringNotContainsString('bob@example.test ', Artisan::output());
     }
 
-    /**
-     * Задаёт четыре случая отказа: две точки ошибки для двух способов запуска. Это проверяет общую операцию
-     * через обе вызывающие стороны.
-     */
     public static function rotationFailures(): array
     {
         return [
@@ -69,10 +58,6 @@ class DemoTokenRotationTest extends TestCase
         ];
     }
 
-    /**
-     * Читает все поля ключей в постоянном порядке. Полный снимок обнаруживает не только потерю записи, но и
-     * случайное изменение её остальных полей.
-     */
     private function tokens(): array
     {
         return DB::table('personal_access_tokens')

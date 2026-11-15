@@ -1,11 +1,11 @@
-name: testlara
+name: warehouse-api
 
-# Общие параметры среды для приложения, очереди и расписания.
+# Shared application, worker and scheduler runtime.
 x-php: &php
   build:
     context: .
     target: testing
-  image: testlara-php:8.4.27
+  image: ${COMPOSE_PROJECT_NAME:-warehouse-api}-php:8.4.27
   working_dir: /var/www/html
   env_file: .env
   volumes:
@@ -17,7 +17,7 @@ x-php: &php
       condition: service_healthy
 
 services:
-  # Принимает запросы от веб-сервера и выполняет код приложения.
+  # Handle application requests through PHP-FPM.
   app:
     <<: *php
     command: php-fpm
@@ -27,7 +27,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Открывает приложение только на местном адресе компьютера.
+  # Expose the API on the local host interface.
   api:
     image: nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
     ports:
@@ -44,19 +44,19 @@ services:
       timeout: 5s
       retries: 5
 
-  # Забирает задания истечения срока из очереди.
+  # Process reservation expiration jobs.
   worker:
     <<: *php
     command: php artisan queue:work redis --queue=reservations --sleep=1 --tries=3 --timeout=30 --no-interaction
     restart: unless-stopped
 
-  # По расписанию ищет резервы, срок которых закончился.
+  # Rediscover expired reservations on schedule.
   scheduler:
     <<: *php
     command: php artisan schedule:work --no-interaction
     restart: unless-stopped
 
-  # Хранит пользователей, остатки и резервы между перезапусками.
+  # Persist users, inventory and reservations across restarts.
   postgres:
     image: postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
     environment:
@@ -72,7 +72,7 @@ services:
       timeout: 5s
       retries: 20
 
-  # Хранит очередь и временные копии каталога.
+  # Store queue messages and cached catalogue data.
   redis:
     image: redis:8.2.11-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
     command: redis-server --appendonly yes
@@ -84,7 +84,7 @@ services:
       timeout: 5s
       retries: 20
 
-# Данные этих хранилищ сохраняются при обычной остановке контейнеров.
+# Preserve these volumes during an ordinary stop.
 volumes:
   postgres-data:
   redis-data:

@@ -2,19 +2,15 @@
 
 namespace App\Console\Commands;
 
-use App\Actions\Reservations\ExpireReservation as ExpireReservationAction;
 use App\Contracts\Clock;
-use App\Enums\ReservationStatus;
-use App\Jobs\ExpireReservation;
+use App\Enums\ReservationStatusEnum;
+use App\Jobs\ExpireReservationJob;
 use App\Models\Reservation;
-use App\Queries\Reservations\QueuedReservationExpirations;
+use App\Services\ReservationQueueService;
+use App\Services\ReservationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Повторно находит просроченные резервы в основной базе. Поэтому истечение можно восстановить после остановки
- * обработчика или потери сообщения очереди.
- */
 class DispatchExpiredReservations extends Command
 {
     protected $signature = 'reservations:expire {--sync : Process directly without Redis}';
@@ -22,21 +18,20 @@ class DispatchExpiredReservations extends Command
     protected $description = 'Rediscover expired reservations in PostgreSQL and queue their expiration';
 
     /**
-     * Выбирает постановку заданий в очередь либо обработку сразу в этом процессе. При работе с очередью
-     * удерживает общую блокировку до окончания отправки, чтобы два запуска не создали одинаковые задания.
+     * Rediscover expired reservations and dispatch or process them.
      */
     public function handle(
         Clock $clock,
-        ExpireReservationAction $expire,
-        QueuedReservationExpirations $queued,
+        ReservationService $reservations,
+        ReservationQueueService $queued,
     ): int {
-        // При работе через очередь блокировка согласует отправителей до окончания записи сообщений.
+        // Keep dispatchers serialized until all queue writes complete.
         $count = $this->option('sync')
-            ? $this->processDue($clock, $expire)
-            : DB::transaction(function () use ($clock, $expire, $queued): int {
+            ? $this->processDue($clock, $reservations)
+            : DB::transaction(function () use ($clock, $reservations, $queued): int {
                 DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ['reservation:expire:dispatch']);
 
-                return $this->processDue($clock, $expire, $queued->ids());
+                return $this->processDue($clock, $reservations, $queued->getQueuedReservationIds());
             });
 
         $this->info("Processed {$count} due reservation(s).");
@@ -45,30 +40,28 @@ class DispatchExpiredReservations extends Command
     }
 
     /**
-     * Читает просроченные резервы небольшими порциями с точностью до микросекунд. При прямой обработке вызывает
-     * общую операцию истечения; при работе с очередью пропускает уже существующие задания. Возвращает число
-     * обработанных или поставленных резервов.
+     * Process due reservations in bounded batches, skipping already queued IDs.
      *
      * @param  array<int, true>|null  $queuedIds
      */
-    private function processDue(Clock $clock, ExpireReservationAction $expire, ?array $queuedIds = null): int
+    private function processDue(Clock $clock, ReservationService $reservations, ?array $queuedIds = null): int
     {
         $count = 0;
 
         foreach (Reservation::query()
-            ->where('status', ReservationStatus::Reserved)
+            ->where('status', ReservationStatusEnum::RESERVED)
             ->where('expires_at', '<=', $clock->now()->format('Y-m-d H:i:s.uP'))
             ->lazyById(200, 'id') as $reservation) {
             if ($queuedIds === null) {
-                $count += (int) $expire->handle($reservation->id);
+                $count += (int) $reservations->expire($reservation->id);
             } else {
                 if (isset($queuedIds[$reservation->id])) {
                     continue;
                 }
 
-                // Отправляем сообщение до освобождения общей блокировки.
-                // Отложенная отправка позволила бы соседнему запуску поставить ещё одну копию.
-                ExpireReservation::dispatch($reservation->id)
+                // Publish before releasing the dispatcher lock.
+                // Deferred publication would allow a concurrent dispatcher to enqueue a duplicate.
+                ExpireReservationJob::dispatch($reservation->id)
                     ->onConnection('redis')
                     ->beforeCommit();
                 $count++;

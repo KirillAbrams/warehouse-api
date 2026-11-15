@@ -1,12 +1,7 @@
 <?php
 
-/**
- * Адреса просмотра товаров и работы с резервами. Все они требуют действительный ключ пользователя и относятся к
- * первой версии запросов.
- */
-
-use App\Http\Controllers\Api\V1\ProductController;
-use App\Http\Controllers\Api\V1\ReservationController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReservationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->middleware('auth:sanctum')->group(function (): void {

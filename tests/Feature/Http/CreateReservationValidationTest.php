@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Http\Api\V1;
+namespace Tests\Feature\Http;
 
 use App\Models\Product;
 use App\Models\User;
@@ -8,17 +8,10 @@ use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * Проверяет виды входных значений и запрет присланных клиентом служебных полей.
- */
 class CreateReservationValidationTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    /**
-     * Передаёт неверный вид номера товара с сохранением вида дробного числа. Проверяет отказ по нужному полю и
-     * полную сохранность свободного количества.
-     */
     #[DataProvider('invalidProductIds')]
     public function test_non_integer_product_ids_return_422_without_holding_stock(mixed $productId): void
     {
@@ -39,10 +32,6 @@ class CreateReservationValidationTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'available_stock' => 5, 'reserved_stock' => 0]);
     }
 
-    /**
-     * Перечисляет неверные виды номера и значения вне допустимого диапазона. Отдельный случай сохраняет отличие
-     * целого числа от дробного с нулевой дробной частью.
-     */
     public static function invalidProductIds(): array
     {
         return [
@@ -59,10 +48,6 @@ class CreateReservationValidationTest extends TestCase
         ];
     }
 
-    /**
-     * Сначала передаёт номер строкой, затем целым числом с тем же ключом. Оба запроса должны относиться к
-     * одному резерву и одному удержанию.
-     */
     public function test_an_integer_string_product_id_is_normalized_and_replays_the_same_reservation(): void
     {
         $product = Product::factory()->create();
@@ -84,10 +69,6 @@ class CreateReservationValidationTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'available_stock' => 4, 'reserved_stock' => 1]);
     }
 
-    /**
-     * Добавляет только одно запрещённое поле за раз. Это не позволяет другому ошибочному полю скрыть отсутствие
-     * нужной проверки.
-     */
     #[DataProvider('serverOwnedFields')]
     public function test_each_server_owned_field_independently_returns_422(string $field, mixed $value): void
     {
@@ -106,10 +87,6 @@ class CreateReservationValidationTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'available_stock' => 5, 'reserved_stock' => 0]);
     }
 
-    /**
-     * Перечисляет каждое служебное поле со значением и с пустым значением. Запрет должен зависеть от наличия
-     * поля, а не от его содержимого.
-     */
     public static function serverOwnedFields(): array
     {
         $cases = [];

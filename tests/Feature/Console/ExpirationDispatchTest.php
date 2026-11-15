@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Console;
 
-use App\Actions\Reservations\CreateReservation;
 use App\Contracts\Clock;
-use App\Jobs\ExpireReservation;
+use App\Jobs\ExpireReservationJob;
 use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\User;
+use App\Services\ReservationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Queue\RedisQueue;
@@ -19,9 +19,6 @@ use Tests\Support\MutableClock;
 use Tests\Support\RecordQueueProbe;
 use Tests\TestCase;
 
-/**
- * Проверяет точность поиска истечений, состояние настоящей очереди и восстановление потерянных заданий.
- */
 class ExpirationDispatchTest extends TestCase
 {
     use LazilyRefreshDatabase;
@@ -30,10 +27,6 @@ class ExpirationDispatchTest extends TestCase
 
     private MutableClock $clock;
 
-    /**
-     * Выбирает тестовую очередь, очищает её и задаёт время с микросекундами. Каждая проверка начинает с
-     * независимого состояния.
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -45,10 +38,6 @@ class ExpirationDispatchTest extends TestCase
         $this->app->instance(Clock::class, $this->clock);
     }
 
-    /**
-     * Очищает тестовую очередь даже после неудачной проверки. Завершение общей основы вызывается в любом
-     * случае.
-     */
     protected function tearDown(): void
     {
         try {
@@ -58,10 +47,6 @@ class ExpirationDispatchTest extends TestCase
         }
     }
 
-    /**
-     * Сдвигает время относительно срока на одну микросекунду. Проверяет точную границу постановки без
-     * досрочного изменения резерва.
-     */
     #[DataProvider('deadlineOffsets')]
     public function test_discovery_preserves_microseconds(int $offset, int $expectedJobs): void
     {
@@ -74,9 +59,6 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id, 'status' => 'reserved']);
     }
 
-    /**
-     * Задаёт время до срока, ровно на сроке и после него. Ожидаемое число сообщений указано явно.
-     */
     public static function deadlineOffsets(): array
     {
         return [
@@ -86,16 +68,12 @@ class ExpirationDispatchTest extends TestCase
         ];
     }
 
-    /**
-     * Оставляет задание в одном из трёх состояний и двенадцать раз повторяет поиск. Проверяет отсутствие новых
-     * копий и изменений удержанного товара.
-     */
     #[DataProvider('queueStates')]
     public function test_repeated_scans_keep_one_live_job_in_each_queue_state(string $state): void
     {
         $reservation = $this->reservation();
         $this->clock->instant = $reservation->expires_at->addSecond();
-        $job = new ExpireReservation($reservation->id);
+        $job = new ExpireReservationJob($reservation->id);
         if ($state === 'delayed') {
             $this->queue->later(300, $job, '', 'reservations');
         } else {
@@ -117,10 +95,6 @@ class ExpirationDispatchTest extends TestCase
         ]);
     }
 
-    /**
-     * Перечисляет ожидание, выполнение и отложенный повтор. Эти состояния должны одинаково защищать от
-     * повторной постановки.
-     */
     public static function queueStates(): array
     {
         return [
@@ -130,10 +104,6 @@ class ExpirationDispatchTest extends TestCase
         ];
     }
 
-    /**
-     * Удаляет уже поставленное сообщение и повторяет поиск. Проверяет его восстановление, настоящее выполнение
-     * и однократный возврат товара.
-     */
     public function test_lost_job_is_rediscovered_on_the_next_scan(): void
     {
         $reservation = $this->reservation();
@@ -157,10 +127,6 @@ class ExpirationDispatchTest extends TestCase
         ]);
     }
 
-    /**
-     * Меняет общую очередь по умолчанию на немедленное выполнение. Проверяет, что обычный диспетчер всё равно
-     * отправляет сообщение в своё именованное соединение.
-     */
     public function test_async_dispatch_uses_redis_when_the_application_default_is_sync(): void
     {
         $reservation = $this->reservation();
@@ -173,15 +139,11 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id, 'status' => 'reserved']);
     }
 
-    /**
-     * Создаёт старое сообщение без дополнительного номера и добавляет постороннее задание. Проверяет
-     * распознавание старого истечения без создания новой копии.
-     */
     public function test_a_legacy_payload_is_deduplicated_without_instantiating_unrelated_jobs(): void
     {
         $reservation = $this->reservation();
         $this->clock->instant = $reservation->expires_at->addSecond();
-        $this->queue->push(new ExpireReservation($reservation->id), '', 'reservations');
+        $this->queue->push(new ExpireReservationJob($reservation->id), '', 'reservations');
         $payload = $this->queue->pendingJobs('reservations')->sole()->payload;
         $this->queue->clear('reservations');
         unset($payload['expiration_reservation_id']);
@@ -194,10 +156,6 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id, 'status' => 'reserved']);
     }
 
-    /**
-     * Запрещает любое обращение к соединению очереди. Прямая обработка на точной границе срока должна завершить
-     * резерв и вернуть товар через базу.
-     */
     public function test_sync_recovers_a_fractional_deadline_without_contacting_redis(): void
     {
         $reservation = $this->reservation();
@@ -214,10 +172,6 @@ class ExpirationDispatchTest extends TestCase
         ]);
     }
 
-    /**
-     * Возвращает взятое сообщение в отложенное состояние. Проверяет отсутствие копии до его потери и
-     * восстановление после удаления.
-     */
     public function test_a_released_job_prevents_duplicate_dispatch_until_it_is_lost(): void
     {
         $reservation = $this->reservation();
@@ -236,10 +190,6 @@ class ExpirationDispatchTest extends TestCase
         $this->assertSame(1, $this->queue->pendingSize('reservations'));
     }
 
-    /**
-     * Вызывает контролируемый отказ второй отправки. Повторный проход должен сохранить первое сообщение и
-     * добавить только отсутствующее второе.
-     */
     public function test_partial_dispatch_failure_recovers_only_the_missing_job(): void
     {
         $first = $this->reservation();
@@ -248,7 +198,7 @@ class ExpirationDispatchTest extends TestCase
         $failed = false;
         Queue::createPayloadUsing(static function (string $connection, ?string $queue, array $payload) use ($second, &$failed): array {
             $job = $payload['data']['command'] ?? null;
-            if ($job instanceof ExpireReservation && $job->reservationId === $second->id && ! $failed) {
+            if ($job instanceof ExpireReservationJob && $job->reservationId === $second->id && ! $failed) {
                 $failed = true;
                 throw new StreamInitException('Injected queue write failure.');
             }
@@ -279,18 +229,13 @@ class ExpirationDispatchTest extends TestCase
         }
     }
 
-    /**
-     * Создаёт отдельного владельца, товар и один настоящий резерв. Общая подготовка использует ту же операцию,
-     * что и запросы приложения.
-     */
     private function reservation(): Reservation
     {
-        return $this->app->make(CreateReservation::class)
-            ->handle(User::factory()
+        return $this->app->make(ReservationService::class)
+            ->create(User::factory()
                 ->create()
                 ->id, Product::factory()
                 ->create()
-                ->id, 1, 'dispatch')
-            ->reservation;
+                ->id, 1, 'dispatch')['reservation'];
     }
 }

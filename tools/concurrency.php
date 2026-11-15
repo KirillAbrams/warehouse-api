@@ -1,11 +1,5 @@
 <?php
 
-/**
- * Отправляет двадцать запросов одновременно, удерживая последнюю единицу товара до наблюдения всех ожидающих
- * запросов базы. Проверяет разные и одинаковые ключи. Создаёт отдельные помеченные записи в выбранной базе и
- * сохраняет их историю для последующей проверки.
- */
-
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
@@ -15,7 +9,7 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-// Без переданного адреса обращаемся к службе запросов внутри того же запуска.
+// Use the API service inside this Compose project unless a URL is supplied.
 $baseUrl = rtrim($argv[1] ?? 'http://api', '/');
 $run = bin2hex(random_bytes(6));
 $user = User::query()->create([
@@ -33,18 +27,18 @@ $locker = new PDO(
 );
 $report = [];
 
-// Сначала запросы используют разные ключи, затем один общий ключ. У товара есть только одна единица.
+// Exercise distinct keys and one shared key against a single available unit.
 foreach (['distinct_keys', 'same_key'] as $scenario) {
     $product = Product::query()->create([
         'sku' => "PAR-{$run}-{$scenario}", 'name' => 'Concurrency fixture',
         'initial_stock' => 1, 'available_stock' => 1,
     ]);
-    // Держим товар занятым, пока все двадцать запросов действительно не начнут ждать эту запись.
+    // Hold the product row until all twenty requests are waiting in PostgreSQL.
     $locker->beginTransaction();
     $statement = $locker->prepare('SELECT id FROM products WHERE id = ? FOR UPDATE');
     $statement->execute([$product->id]);
 
-    // Готовим все соединения до ожидания ответов, чтобы запросы выполнялись одновременно.
+    // Prepare all sockets before collecting responses.
     $multi = curl_multi_init();
     $handles = [];
     for ($index = 0; $index < 20; $index++) {
@@ -67,7 +61,7 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
         $handles[] = $handle;
     }
 
-    // Разрешаем продолжение после наблюдения ожидания в базе, а не после произвольной задержки.
+    // Release the row after observing real lock waiters instead of a fixed delay.
     $started = microtime(true);
     $maxInFlight = 0;
     $waiters = 0;
@@ -102,7 +96,7 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
         }
     }
 
-    // Собираем ответы и проверяем сетевые ошибки каждого запроса.
+    // Collect each response and check socket errors.
     $statuses = [];
     $ids = [];
     foreach ($handles as $handle) {
@@ -124,12 +118,12 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
     curl_multi_close($multi);
     ksort($statuses);
 
-    // Независимо читаем итоговые счётчики и число резервов прямо из базы.
+    // Read final counters and reservation counts independently through SQL.
     $row = DB::selectOne(
         'SELECT initial_stock, available_stock, reserved_stock, confirmed_stock, (SELECT count(*) FROM reservations r WHERE r.product_id = p.id) AS reservation_count FROM products p WHERE id = ?',
         [$product->id]
     );
-    // В обоих случаях должен существовать один резерв и ровно одно удержание.
+    // Require one reservation and one held unit in both scenarios.
     $expected = $scenario === 'distinct_keys' ? [201 => 1, 409 => 19] : [200 => 19, 201 => 1];
     if ($statuses !== $expected || count(array_unique($ids)) !== 1 || (int) $row->reservation_count !== 1
         || (int) $row->initial_stock !== 1 || (int) $row->available_stock !== 0 || (int) $row->reserved_stock !== 1 || (int) $row->confirmed_stock !== 0

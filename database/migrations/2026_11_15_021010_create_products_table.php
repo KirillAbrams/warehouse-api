@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Создаёт товары и проверки правильности распределения их количества.
- */
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,13 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Задаёт целые счётчики и неповторяющийся артикул. Проверки базы запрещают отрицательные остатки и требуют,
-     * чтобы их сумма была равна исходному количеству.
-     */
     public function up(): void
     {
-        // Исходное количество товара и его распределение между тремя счётчиками.
+
         Schema::create('products', function (Blueprint $table): void {
             $table->id();
             $table->string('sku', 64)->unique();
@@ -37,9 +29,6 @@ return new class extends Migration
         );
     }
 
-    /**
-     * Убирает таблицу товаров при откате. Сначала должны быть убраны зависимые таблицы резервов.
-     */
     public function down(): void
     {
         Schema::dropIfExists('products');

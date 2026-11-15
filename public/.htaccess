@@ -5,20 +5,20 @@
 
     RewriteEngine On
 
-    # Сохраняет заголовок с ключом доступа при передаче запроса приложению.
+    # Forward the bearer token header.
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Сохраняет заголовок защиты запросов, если он передан.
+    # Forward the XSRF token header.
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Убирает завершающую косую черту у адреса, который не обозначает папку.
+    # Remove trailing slashes from paths that are not directories.
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Передаёт приложению запросы, для которых нет готового файла или папки.
+    # Route requests without a matching file or directory to Laravel.
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]

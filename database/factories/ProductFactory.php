@@ -6,16 +6,11 @@ use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * Заготовка товара для проверок. Создаёт отдельные записи с известным исходным количеством.
- *
  * @extends Factory<Product>
  */
 class ProductFactory extends Factory
 {
     /**
-     * Задаёт неповторяющийся артикул, название и пять свободных единиц. Удержанное и подтверждённое количество
-     * сначала равно нулю, поэтому исходное равенство счётчиков выполняется.
-     *
      * @return array<string, int|string>
      */
     public function definition(): array

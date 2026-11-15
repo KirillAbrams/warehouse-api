@@ -1,10 +1,5 @@
 <?php
 
-/**
- * Отдельный запуск диспетчера для проверки одновременной постановки. Проверяет имя базы и служебный префикс
- * очереди, затем сообщает результат родительскому процессу.
- */
-
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;

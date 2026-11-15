@@ -1,17 +1,13 @@
 #!/usr/bin/env php
 <?php
 
-/**
- * Изображает только команды Docker, нужные проверке подготовки сети. Хранит ответы и вызовы в отдельном
- * временном файле. К настоящему Docker не обращается и чужие данные не читает.
- */
 $path = getenv('DOCKER_NETWORK_TEST_STATE');
 $state = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 $arguments = array_slice($argv, 1);
 $program = basename($argv[0]);
 $state['calls'][] = [$program, ...$arguments];
 
-// Сначала сохраняет наблюдаемый вызов, затем возвращает выбранный ответ настоящей команды.
+// Record the requested Docker command before returning the configured response.
 $finish = static function (int $code, string $message = '') use ($path, &$state): never {
     file_put_contents($path, json_encode($state, JSON_THROW_ON_ERROR));
     fwrite($code === 0 ? STDOUT : STDERR, $message);
@@ -35,7 +31,7 @@ if ($program === 'docker-compose' || ($arguments[0] ?? null) === 'compose') {
         $finish(0, 'COMPOSE_PROJECT_NAME='.$state['project']."\nAPP_KEY=do-not-print-this-value\n");
     }
 
-    // Прежняя подготовка останавливается именно здесь: до запуска контейнера нужна сеть.
+    // Reproduce the original failure before container startup needs its network.
     if (in_array($arguments[0] ?? null, ['run', 'up'], true) && $state['network'] === null) {
         if ($state['pool_exhausted']) {
             $finish(1, "all predefined address pools have been fully subnetted\n");

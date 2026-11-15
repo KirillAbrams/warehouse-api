@@ -1,10 +1,5 @@
 <?php
 
-/**
- * Собирает приложение, подключает адреса запросов и задаёт общий вид отказов. Пользователь получает постоянный
- * код причины, а подробности внутренних ошибок остаются в журнале.
- */
-
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,17 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    // Не перенаправляем запрос без ключа на страницу входа; он получит обычный ответ об отказе.
+    // Return an authentication error instead of redirecting token clients.
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(null);
     })
-    // Все виды отказов ниже приводятся к одной форме ответа.
+    // Keep API errors in the documented JSON format.
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Для адресов приложения выбираем ответ с полями даже без отдельного пожелания клиента.
+        // Render API errors as JSON even without an Accept header.
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
-        // Ошибки входных полей возвращаем вместе с указанием, какое поле нужно исправить.
+        // Include field errors in validation responses.
         $exceptions->render(function (ValidationException $exception, Request $request) {
             return response()->json([
                 'error' => [
@@ -41,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 422);
         });
 
-        // Отдельный отказ сообщает об отсутствующем или недействительном ключе доступа.
+        // Handle missing or invalid bearer tokens.
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             return response()->json([
                 'error' => [
@@ -51,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 401);
         });
 
-        // Сохраняем номер отказа и служебные заголовки, в том числе для неизвестного адреса.
+        // Preserve HTTP status codes and protocol headers.
         $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
             return response()->json([
                 'error' => [
@@ -63,7 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $exception->getStatusCode(), $exception->getHeaders());
         });
 
-        // Подробности внутренней ошибки остаются в журнале; наружу возвращается короткая причина.
+        // Log internal details without exposing them in API responses.
         $exceptions->render(function (Throwable $exception, Request $request) {
             return response()->json([
                 'error' => [

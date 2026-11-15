@@ -1,18 +1,14 @@
 <?php
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * Задаёт поля карточки товара, которые разрешено отдавать пользователю.
- */
 class ProductResource extends JsonResource
 {
     /**
-     * Преобразует подготовленный массив в ответ с номером, артикулом, названием и свободным количеством.
-     * Остальные внутренние счётчики в ответ не включаются.
+     * Expose public product data.
      *
      * @return array{id: int, sku: string, name: string, available_quantity: int}
      */

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Console;
 
-use App\Actions\Reservations\CreateReservation;
 use App\Contracts\Clock;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\ReservationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Queue\RedisQueue;
@@ -16,17 +16,10 @@ use Symfony\Component\Process\Process;
 use Tests\Support\MutableClock;
 use Tests\TestCase;
 
-/**
- * Проверяет одновременную постановку истечений отдельными процессами на настоящей базе и очереди.
- */
 class ExpirationDispatchConcurrencyTest extends TestCase
 {
     use DatabaseMigrations;
 
-    /**
-     * Запускает восемь процессов и наблюдает ожидание общей блокировки каждого из них. После освобождения
-     * проверяет ровно одно сообщение на резерв и неизменность удержанного количества.
-     */
     public function test_eight_blocked_dispatchers_enqueue_each_due_reservation_once(): void
     {
         /** @var RedisQueue $queue */
@@ -39,9 +32,8 @@ class ExpirationDispatchConcurrencyTest extends TestCase
         $ids = [];
 
         for ($index = 0; $index < 8; $index++) {
-            $ids[] = $this->app->make(CreateReservation::class)
-                ->handle($owner->id, $product->id, 1, 'parallel-'.$index)
-                ->reservation->id;
+            $ids[] = $this->app->make(ReservationService::class)
+                ->create($owner->id, $product->id, 1, 'parallel-'.$index)['reservation']->id;
         }
         $configuration = config('database.connections.pgsql');
         $locker = new PDO(

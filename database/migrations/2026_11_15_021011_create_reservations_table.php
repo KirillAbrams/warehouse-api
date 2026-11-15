@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Создаёт резервы, связи с владельцами и товарами, ограничения и ускорение поиска истечений.
- */
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,13 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Сохраняет успешный ключ вместе с резервом и делает пару владельца и ключа неповторяющейся. Проверки базы
-     * ограничивают количество, состояния и даты; отдельный указатель ускоряет поиск просроченных удержаний.
-     */
     public function up(): void
     {
-        // Один товар, владелец, количество и неизменяемый срок каждого успешного резерва.
+
         Schema::create('reservations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id')->constrained()->restrictOnDelete();
@@ -46,10 +38,6 @@ return new class extends Migration
         DB::statement("CREATE INDEX reservations_due_index ON reservations (expires_at, id) WHERE status = 'reserved'");
     }
 
-    /**
-     * Убирает таблицу резервов вместе с её ограничениями и указателями. Этот откат предназначен для
-     * управляемого изменения схемы, а не для обычного завершения резерва.
-     */
     public function down(): void
     {
         Schema::dropIfExists('reservations');

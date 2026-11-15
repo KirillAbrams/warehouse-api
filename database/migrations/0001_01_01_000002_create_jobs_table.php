@@ -1,22 +1,14 @@
 <?php
 
-/**
- * Создаёт стандартные таблицы очереди, групп заданий и неудачных попыток.
- */
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Подготавливает служебные таблицы обработки заданий. Отдельная таблица сохраняет сведения об окончательно
-     * неудачных заданиях для разбора причины.
-     */
     public function up(): void
     {
-        // Сообщения при выборе хранения очереди в базе.
+
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
             $table->string('queue')->index();
@@ -27,7 +19,6 @@ return new class extends Migration
             $table->unsignedInteger('created_at');
         });
 
-        // Сведения о совместно запущенных группах заданий.
         Schema::create('job_batches', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');
@@ -41,7 +32,6 @@ return new class extends Migration
             $table->integer('finished_at')->nullable();
         });
 
-        // Сведения о заданиях, исчерпавших попытки обработки.
         Schema::create('failed_jobs', function (Blueprint $table) {
             $table->id();
             $table->string('uuid')->unique();
@@ -55,10 +45,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Убирает только таблицы служебной обработки заданий. Порядок отката соответствует обратному порядку
-     * создания.
-     */
     public function down(): void
     {
         Schema::dropIfExists('jobs');

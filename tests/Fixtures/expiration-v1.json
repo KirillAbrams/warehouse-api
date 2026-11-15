@@ -1,0 +1,23 @@
+{
+  "uuid": "aad6cec5-d0b0-4529-a06b-764876ab1510",
+  "displayName": "App\\Jobs\\ExpireReservation",
+  "job": "Illuminate\\Queue\\CallQueuedHandler@call",
+  "maxTries": 3,
+  "maxExceptions": null,
+  "failOnTimeout": false,
+  "countCrashesAsExceptions": false,
+  "backoff": "1,5,10",
+  "timeout": 30,
+  "retryUntil": null,
+  "deleteWhenMissingModels": false,
+  "data": {
+    "commandName": "App\\Jobs\\ExpireReservation",
+    "command": "O:26:\"App\\Jobs\\ExpireReservation\":2:{s:13:\"reservationId\";i:42;s:5:\"queue\";s:12:\"reservations\";}",
+    "batchId": null
+  },
+  "createdAt": 1794759648,
+  "expiration_reservation_id": 42,
+  "id": "tesBMkf8mXHtuk3aBxnwoS1RxISa551z",
+  "attempts": 0,
+  "delay": null
+}

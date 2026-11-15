@@ -4,14 +4,10 @@ namespace App\Contracts;
 
 use Carbon\CarbonImmutable;
 
-/**
- * Общее требование к часам приложения. Рабочий код получает время базы, а проверки могут задавать своё время.
- */
 interface Clock
 {
     /**
-     * Возвращает текущий момент в едином часовом поясе. Реализация должна давать свежее время даже после
-     * ожидания блокировки.
+     * Return fresh UTC time after any lock wait.
      */
     public function now(): CarbonImmutable;
 }
