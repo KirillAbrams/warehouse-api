@@ -12,9 +12,16 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    /**
+     * Reuse one password hash while building user fixtures.
+     *
+     * @var string|null
+     */
     protected static ?string $password;
 
     /**
+     * Create a verified user and reuse the password hash across fixtures.
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -24,14 +31,19 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'remember_token' => Str::random(10)
         ];
     }
 
+    /**
+     * Create a user whose email has not been verified.
+     *
+     * @return static
+     */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+        return $this->state(fn(array $attributes) => [
+            'email_verified_at' => null
         ]);
     }
 }

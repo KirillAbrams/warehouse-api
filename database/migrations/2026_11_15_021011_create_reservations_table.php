@@ -7,9 +7,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
     public function up(): void
     {
-
         Schema::create('reservations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id')->constrained()->restrictOnDelete();
@@ -38,6 +42,11 @@ return new class extends Migration
         DB::statement("CREATE INDEX reservations_due_index ON reservations (expires_at, id) WHERE status = 'reserved'");
     }
 
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
     public function down(): void
     {
         Schema::dropIfExists('reservations');

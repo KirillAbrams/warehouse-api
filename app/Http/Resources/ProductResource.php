@@ -14,6 +14,7 @@ class ProductResource extends JsonResource
     /**
      * Transform the product into its public API fields.
      *
+     * @param Request $request
      * @return array<string, int|string>
      */
     public function toArray(Request $request): array
@@ -22,7 +23,7 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'sku' => $this->sku,
             'name' => $this->name,
-            'available_quantity' => $this->available_stock,
+            'available_quantity' => $this->available_stock
         ];
     }
 }

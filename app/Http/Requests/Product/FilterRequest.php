@@ -15,7 +15,7 @@ class FilterRequest extends FormRequest
     {
         return [
             'page' => 'sometimes|integer|min:1|max:2147483647',
-            'per_page' => 'sometimes|integer|min:1|max:' . config()->integer('reservations.max_per_page'),
+            'per_page' => 'sometimes|integer|min:1|max:' . config()->integer('reservations.max_per_page')
         ];
     }
 }

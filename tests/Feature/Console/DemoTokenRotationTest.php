@@ -54,7 +54,7 @@ class DemoTokenRotationTest extends TestCase
             'command first insert' => ['demo:tokens', 'alice@example.test'],
             'command second insert' => ['demo:tokens', 'bob@example.test'],
             'seeder first insert' => ['db:seed', 'alice@example.test'],
-            'seeder second insert' => ['db:seed', 'bob@example.test'],
+            'seeder second insert' => ['db:seed', 'bob@example.test']
         ];
     }
 
@@ -63,7 +63,7 @@ class DemoTokenRotationTest extends TestCase
         return DB::table('personal_access_tokens')
             ->orderBy('id')
             ->get()
-            ->map(fn (object $token): array => (array) $token)
+            ->map(fn(object $token): array => (array)$token)
             ->all();
     }
 }

@@ -52,7 +52,7 @@ class NetworkSetupTest extends TestCase
         array $configuration,
         bool $success,
         int $creates,
-        int $explicit,
+        int $explicit
     ): void {
         $this->writeState($configuration);
         $process = $this->runCommand('prepare-network');
@@ -86,7 +86,7 @@ class NetworkSetupTest extends TestCase
             'invalid project' => [['project' => 'unsafe/name'], false, 0, 0],
             'invalid first character' => [['project' => '_unsafe'], false, 0, 0],
             'configuration error' => [['config_error' => true], false, 0, 0],
-            'standalone compose' => [['plugin' => false], true, 2, 1],
+            'standalone compose' => [['plugin' => false], true, 2, 1]
         ];
     }
 
@@ -123,7 +123,7 @@ class NetworkSetupTest extends TestCase
             'project' => 'warehouse-network-test', 'plugin' => true, 'config_error' => false,
             'network' => null, 'pool_exhausted' => true, 'standard_error' => null,
             'explicit_error' => null, 'overlaps' => 0, 'race' => null,
-            'calls' => [], 'create_count' => 0, 'subnets' => [],
+            'calls' => [], 'create_count' => 0, 'subnets' => []
         ], $overrides), JSON_THROW_ON_ERROR));
     }
 
@@ -139,7 +139,7 @@ class NetworkSetupTest extends TestCase
         $process = new Process([...$arguments, $this->directory . '/bin/' . $name], $this->directory, [
             'PATH' => $this->directory . '/commands:' . getenv('PATH'),
             'DOCKER_NETWORK_TEST_STATE' => $this->directory . '/state.json',
-            'PS4' => '+${LINENO}: ',
+            'PS4' => '+${LINENO}: '
         ]);
         $process->setTimeout(30);
         $process->run();
@@ -147,7 +147,7 @@ class NetworkSetupTest extends TestCase
             file_put_contents(
                 storage_path('framework/testing/network-shell-trace.jsonl'),
                 json_encode(['script' => $name, 'trace' => $process->getErrorOutput()], JSON_THROW_ON_ERROR) . "\n",
-                FILE_APPEND,
+                FILE_APPEND
             );
         }
 

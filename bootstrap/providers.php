@@ -5,5 +5,5 @@ use App\Providers\RouteServiceProvider;
 
 return [
     AppServiceProvider::class,
-    RouteServiceProvider::class,
+    RouteServiceProvider::class
 ];

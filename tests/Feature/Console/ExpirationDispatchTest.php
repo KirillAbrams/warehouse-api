@@ -64,7 +64,7 @@ class ExpirationDispatchTest extends TestCase
         return [
             'one microsecond early' => [-1, 0],
             'exact deadline' => [0, 1],
-            'one microsecond due' => [1, 1],
+            'one microsecond due' => [1, 1]
         ];
     }
 
@@ -91,7 +91,7 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('products', [
             'id' => $reservation->product_id,
             'available_stock' => 4,
-            'reserved_stock' => 1,
+            'reserved_stock' => 1
         ]);
     }
 
@@ -100,7 +100,7 @@ class ExpirationDispatchTest extends TestCase
         return [
             'waiting' => ['ready'],
             'executing' => ['reserved'],
-            'retry backoff' => ['delayed'],
+            'retry backoff' => ['delayed']
         ];
     }
 
@@ -123,7 +123,7 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('products', [
             'id' => $reservation->product_id,
             'available_stock' => 5,
-            'reserved_stock' => 0,
+            'reserved_stock' => 0
         ]);
     }
 
@@ -168,7 +168,7 @@ class ExpirationDispatchTest extends TestCase
         $this->assertDatabaseHas('products', [
             'id' => $reservation->product_id,
             'available_stock' => 5,
-            'reserved_stock' => 0,
+            'reserved_stock' => 0
         ]);
     }
 
@@ -218,7 +218,7 @@ class ExpirationDispatchTest extends TestCase
             $this->artisan('reservations:expire')->assertSuccessful();
 
             $payloads = $this->queue->pendingJobs('reservations')
-                ->map(fn ($job) => $job->payload['expiration_reservation_id'])
+                ->map(fn($job) => $job->payload['expiration_reservation_id'])
                 ->sort()
                 ->values()
                 ->all();

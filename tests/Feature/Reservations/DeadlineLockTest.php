@@ -39,16 +39,16 @@ class DeadlineLockTest extends TestCase
             'DB_URL' => '',
             'CACHE_STORE' => 'array',
             'APP_KEY' => config('app.key'),
-            'XDEBUG_MODE' => 'off',
+            'XDEBUG_MODE' => 'off'
         ];
         $process = new Process(
             [
                 PHP_BINARY,
                 base_path('tests/Support/Processes/transition-process.php'),
-                (string) $owner->id,
-                (string) $reservation->id,
+                (string)$owner->id,
+                (string)$reservation->id,
                 $target,
-                $gate,
+                $gate
             ],
             base_path(),
             $environment
@@ -59,7 +59,7 @@ class DeadlineLockTest extends TestCase
             $process->start();
             $readyLimit = microtime(true) + 30;
             do {
-                $ready = (int) DB::scalar(
+                $ready = (int)DB::scalar(
                     "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'warehouse-deadline-child' AND datname = 'warehouse_test' AND wait_event_type = 'Lock' AND query LIKE 'SELECT pg_advisory_lock%'"
                 );
                 if ($ready === 1) {
@@ -82,7 +82,7 @@ class DeadlineLockTest extends TestCase
 
             $deadline = microtime(true) + 8;
             do {
-                $waiting = (int) DB::scalar(
+                $waiting = (int)DB::scalar(
                     "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'warehouse-deadline-child' AND datname = 'warehouse_test' AND wait_event_type = 'Lock' AND strpos(query, ?) > 0",
                     ['"' . $table . '"']
                 );
@@ -93,14 +93,14 @@ class DeadlineLockTest extends TestCase
             } while (microtime(true) < $deadline);
             $this->assertSame(1, $waiting, 'Child must be observed waiting on the actual decision row.');
             $this->assertFalse(
-                (bool) DB::scalar(
+                (bool)DB::scalar(
                     'SELECT clock_timestamp() >= expires_at FROM reservations WHERE id = ?',
                     [$reservation->id]
                 ),
                 'Request must reach the lock before its deadline.'
             );
             do {
-                $expired = (bool) DB::scalar(
+                $expired = (bool)DB::scalar(
                     'SELECT clock_timestamp() >= expires_at FROM reservations WHERE id = ?',
                     [$reservation->id]
                 );
@@ -135,7 +135,7 @@ class DeadlineLockTest extends TestCase
             'id' => $product->id,
             'available_stock' => 3,
             'reserved_stock' => 2,
-            'confirmed_stock' => 0,
+            'confirmed_stock' => 0
         ]);
     }
 

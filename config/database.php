@@ -18,7 +18,7 @@ return [
             'busy_timeout' => null,
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'transaction_mode' => 'DEFERRED'
         ],
 
         'mysql' => [
@@ -37,8 +37,8 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')
+            ]) : []
         ],
 
         'mariadb' => [
@@ -57,8 +57,8 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')
+            ]) : []
         ],
 
         'pgsql' => [
@@ -74,7 +74,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'timezone' => 'UTC',
+            'timezone' => 'UTC'
         ],
 
         'sqlsrv' => [
@@ -87,14 +87,14 @@ return [
             'password' => env('DB_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
-            'prefix_indexes' => true,
-        ],
+            'prefix_indexes' => true
+        ]
 
     ],
 
     'migrations' => [
         'table' => 'migrations',
-        'update_date_on_publish' => true,
+        'update_date_on_publish' => true
     ],
 
     'redis' => [
@@ -103,8 +103,8 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')) . '-database-'),
-            'persistent' => env('REDIS_PERSISTENT', false),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string)env('APP_NAME', 'laravel')) . '-database-'),
+            'persistent' => env('REDIS_PERSISTENT', false)
         ],
 
         'default' => [
@@ -114,12 +114,12 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
-            'timeout' => (float) env('REDIS_TIMEOUT', 1),
-            'read_write_timeout' => (float) env('REDIS_READ_TIMEOUT', 1),
+            'timeout' => (float)env('REDIS_TIMEOUT', 1),
+            'read_write_timeout' => (float)env('REDIS_READ_TIMEOUT', 1),
             'max_retries' => 0,
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
-            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000)
         ],
 
         'cache' => [
@@ -129,14 +129,14 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_CACHE_DB', '1'),
-            'timeout' => (float) env('REDIS_TIMEOUT', 1),
-            'read_write_timeout' => (float) env('REDIS_READ_TIMEOUT', 1),
+            'timeout' => (float)env('REDIS_TIMEOUT', 1),
+            'read_write_timeout' => (float)env('REDIS_READ_TIMEOUT', 1),
             'max_retries' => 0,
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
-            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
-        ],
+            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000)
+        ]
 
-    ],
+    ]
 
 ];

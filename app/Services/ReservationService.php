@@ -10,27 +10,28 @@ use App\Models\Reservation;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
+use function in_array;
+
 class ReservationService
 {
     /**
      * Reserve stock atomically or return an identical earlier request.
      *
+     * @param int $userId
+     * @param int $productId
+     * @param int $quantity
+     * @param string $key
      * @return Reservation
      */
-    public static function create(
-        int $userId,
-        int $productId,
-        int $quantity,
-        string $key,
-    ): Reservation {
+    public static function create(int $userId, int $productId, int $quantity, string $key): Reservation
+    {
         // Persist the reservation and stock counters in the same transaction.
         return DB::transaction(function () use ($userId, $productId, $quantity, $key): Reservation {
             // Lock the user/key pair before its reservation row exists.
             // Hash collisions only serialize otherwise independent requests.
             DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ["reservation:create:{$userId}:{$key}"]);
 
-            $existing = Reservation::query()
-                ->where('user_id', $userId)
+            $existing = Reservation::where('user_id', $userId)
                 ->where('idempotency_key', $key)
                 ->lockForUpdate()
                 ->first();
@@ -40,15 +41,14 @@ class ReservationService
                     throw new ApiException(
                         409,
                         'idempotency_conflict',
-                        'This key was used with a different product or quantity.',
+                        'This key was used with a different product or quantity.'
                     );
                 }
 
                 return $existing;
             }
 
-            $product = Product::query()
-                ->lockForUpdate()
+            $product = Product::lockForUpdate()
                 ->find($productId)
                 ?? throw ApiException::notFound('product');
 
@@ -61,7 +61,7 @@ class ReservationService
             $product->reserved_stock += $quantity;
             $product->save();
 
-            $reservation = Reservation::query()->create([
+            $reservation = Reservation::create([
                 'user_id' => $userId,
                 'product_id' => $productId,
                 'quantity' => $quantity,
@@ -69,7 +69,7 @@ class ReservationService
                 'status' => ReservationStatusEnum::RESERVED,
                 'created_at' => $now,
                 'updated_at' => $now,
-                'expires_at' => $now->addSeconds(config()->integer('reservations.ttl_seconds')),
+                'expires_at' => $now->addSeconds(config()->integer('reservations.ttl_seconds'))
             ]);
 
             return $reservation;
@@ -78,17 +78,21 @@ class ReservationService
 
     /**
      * Confirm or cancel an owned reservation before its deadline.
+     *
+     * @param int $userId
+     * @param int $reservationId
+     * @param ReservationStatusEnum $target
+     * @return Reservation
      */
     public static function transition(int $userId, int $reservationId, ReservationStatusEnum $target): Reservation
     {
-        if (!\in_array($target, [ReservationStatusEnum::CONFIRMED, ReservationStatusEnum::CANCELLED], true)) {
+        if (!in_array($target, [ReservationStatusEnum::CONFIRMED, ReservationStatusEnum::CANCELLED], true)) {
             throw new InvalidArgumentException('Only confirm and cancel are client transitions.');
         }
 
         // Persist the final state and stock counters atomically.
         return DB::transaction(function () use ($userId, $reservationId, $target): Reservation {
-            $reservation = Reservation::query()
-                ->where('user_id', $userId)
+            $reservation = Reservation::where('user_id', $userId)
                 ->lockForUpdate()
                 ->find($reservationId)
                 ?? throw ApiException::notFound('reservation');
@@ -105,12 +109,11 @@ class ReservationService
                 throw new ApiException(
                     409,
                     'invalid_transition',
-                    'The reservation is already in a different final state.',
+                    'The reservation is already in a different final state.'
                 );
             }
 
-            $product = Product::query()
-                ->lockForUpdate()
+            $product = Product::lockForUpdate()
                 ->findOrFail($reservation->product_id);
 
             // Read wall-clock time after acquiring both row locks.
@@ -133,21 +136,22 @@ class ReservationService
 
     /**
      * Release reserved stock once after its deadline.
+     *
+     * @param int $reservationId
+     * @return bool
      */
     public static function expire(int $reservationId): bool
     {
         // Finalize the reservation and release stock in one transaction.
         return DB::transaction(function () use ($reservationId): bool {
-            $reservation = Reservation::query()
-                ->lockForUpdate()
+            $reservation = Reservation::lockForUpdate()
                 ->find($reservationId);
 
             if ($reservation === null || $reservation->status !== ReservationStatusEnum::RESERVED) {
                 return false;
             }
 
-            $product = Product::query()
-                ->lockForUpdate()
+            $product = Product::lockForUpdate()
                 ->findOrFail($reservation->product_id);
             $now = app(ClockInterface::class)->now();
 

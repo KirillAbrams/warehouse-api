@@ -23,6 +23,14 @@
         },
         "no_superfluous_phpdoc_tags": false,
         "trailing_comma_in_multiline": false,
-        "ordered_class_elements": true
+        "ordered_class_elements": true,
+        "function_declaration": {
+            "closure_fn_spacing": "none"
+        },
+        "cast_spaces": {
+            "space": "none"
+        },
+        "native_function_invocation": false,
+        "elseif": false
     }
 }

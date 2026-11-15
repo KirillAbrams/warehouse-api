@@ -33,7 +33,7 @@ class ProductServiceTest extends TestCase
                 'id' => $product->id,
                 'sku' => $product->sku,
                 'name' => $product->name,
-                'available_quantity' => 3,
+                'available_quantity' => 3
             ], (new ProductResource($result))->resolve(Request::create('/api/v1/products/' . $product->id)));
             $this->assertSame(5, $product->fresh()->available_stock);
         } finally {
@@ -49,7 +49,7 @@ class ProductServiceTest extends TestCase
         $key = 'catalog:v1:page:2:1';
         $snapshot = [
             'items' => [['id' => $product->id, 'sku' => $product->sku, 'name' => $product->name, 'available_stock' => 4]],
-            'total' => 2,
+            'total' => 2
         ];
         $cache->put($key, $snapshot, 60);
 

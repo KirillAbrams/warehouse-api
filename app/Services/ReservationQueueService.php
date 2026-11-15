@@ -8,6 +8,8 @@ use Illuminate\Queue\RedisQueue;
 use LogicException;
 use Predis\Transaction\MultiExec;
 
+use function in_array;
+
 class ReservationQueueService
 {
     /**
@@ -40,7 +42,7 @@ class ReservationQueueService
             foreach ($payloads as $payload) {
                 $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
 
-                if (!\in_array($data['data']['commandName'] ?? null, [ExpireReservationJob::class, ExpireReservationJob::LEGACY_CLASS], true)) {
+                if (!in_array($data['data']['commandName'] ?? null, [ExpireReservationJob::class, ExpireReservationJob::LEGACY_CLASS], true)) {
                     continue;
                 }
 

@@ -119,7 +119,7 @@ class ReservationApiTest extends TestCase
         $this->reserve($other)->assertConflict()->assertJsonPath('error.code', 'idempotency_conflict');
         $this->postJson(
             '/api/v1/reservations',
-            ['quantity' => 2, 'product_id' => (string) $product->id],
+            ['quantity' => 2, 'product_id' => (string)$product->id],
             ['Idempotency-Key' => 'reserve-test']
         )
             ->assertOk();
@@ -212,7 +212,7 @@ class ReservationApiTest extends TestCase
             'confirm cancelled' => ['cancelled', 'confirm', 409, 'cancelled', 'invalid_transition'],
             'repeat cancel' => ['cancelled', 'cancel', 200, 'cancelled', null],
             'expired confirm' => ['expired', 'confirm', 409, 'expired', 'reservation_expired'],
-            'expired cancel' => ['expired', 'cancel', 409, 'expired', 'reservation_expired'],
+            'expired cancel' => ['expired', 'cancel', 409, 'expired', 'reservation_expired']
         ];
     }
 
@@ -317,7 +317,7 @@ class ReservationApiTest extends TestCase
         $this->clock->instant = $this->clock->instant->addMinutes(10);
         Bus::fake([ExpireReservationJob::class]);
         $this->artisan('reservations:expire')->assertSuccessful();
-        Bus::assertDispatched(ExpireReservationJob::class, fn ($job) => $job->reservationId === $id);
+        Bus::assertDispatched(ExpireReservationJob::class, fn($job) => $job->reservationId === $id);
         $this->artisan('reservations:expire', ['--sync' => true])->assertSuccessful();
         $this->artisan('reservations:expire', ['--sync' => true])->assertSuccessful();
         $this->assertStock($product, 5, 0, 0);
@@ -370,7 +370,7 @@ class ReservationApiTest extends TestCase
         $product = Product::factory()->create();
         $this->postJson('/api/v1/reservations', [
             'product_id' => $product->id, 'quantity' => 1, 'user_id' => $this->owner->id,
-            'status' => 'confirmed', 'expires_at' => '2099-01-01T00:00:00Z',
+            'status' => 'confirmed', 'expires_at' => '2099-01-01T00:00:00Z'
         ], ['Idempotency-Key' => 'server-fields'])->assertUnprocessable();
         $this->assertDatabaseCount('reservations', 0);
         $this->assertStock($product, 5, 0, 0);
@@ -400,15 +400,13 @@ class ReservationApiTest extends TestCase
         $this->assertSame($product->initial_stock, $available + $reserved + $confirmed);
         $this->assertSame(
             $reserved,
-            (int) Reservation::query()
-                ->where('product_id', $product->id)
+            (int)Reservation::where('product_id', $product->id)
                 ->where('status', ReservationStatusEnum::RESERVED)
                 ->sum('quantity')
         );
         $this->assertSame(
             $confirmed,
-            (int) Reservation::query()
-                ->where('product_id', $product->id)
+            (int)Reservation::where('product_id', $product->id)
                 ->where('status', ReservationStatusEnum::CONFIRMED)
                 ->sum('quantity')
         );

@@ -14,6 +14,7 @@ class ReservationResource extends JsonResource
     /**
      * Expose reservation state with UTC microsecond timestamps.
      *
+     * @param Request $request
      * @return array<string, int|string>
      */
     public function toArray(Request $request): array
@@ -24,7 +25,7 @@ class ReservationResource extends JsonResource
             'quantity' => $this->quantity,
             'status' => $this->status->value,
             'created_at' => $this->created_at->utc()->format('Y-m-d\TH:i:s.u\Z'),
-            'expires_at' => $this->expires_at->utc()->format('Y-m-d\TH:i:s.u\Z'),
+            'expires_at' => $this->expires_at->utc()->format('Y-m-d\TH:i:s.u\Z')
         ];
     }
 }

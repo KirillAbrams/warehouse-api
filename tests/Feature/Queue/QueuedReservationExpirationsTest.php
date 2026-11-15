@@ -33,7 +33,7 @@ class QueuedReservationExpirationsTest extends TestCase
 
     #[DataProvider('invalidLegacyCommands')]
     public function test_an_invalid_legacy_command_is_rejected_without_changing_the_queued_message(
-        ?string $commandClass,
+        ?string $commandClass
     ): void {
         /** @var RedisQueue $queue */
         $queue = Queue::connection('redis');
@@ -70,7 +70,7 @@ class QueuedReservationExpirationsTest extends TestCase
     {
         return [
             'serialized null is not a job' => [null],
-            'another job class is not an expiration' => [RecordQueueProbe::class],
+            'another job class is not an expiration' => [RecordQueueProbe::class]
         ];
     }
 }

@@ -15,39 +15,41 @@ class ProductService
     /**
      * Cache page data while rebuilding links for the current request.
      *
+     * @param int $page
+     * @param int $perPage
      * @return LengthAwarePaginator<int, Product>
      */
     public static function paginate(int $page, int $perPage): LengthAwarePaginator
     {
         // Read PostgreSQL on a cache miss or a Redis failure.
         $data = self::remember("page:{$page}:{$perPage}", function () use ($page, $perPage): array {
-            $products = Product::query()
-                ->orderBy('id')
+            $products = Product::orderBy('id')
                 ->paginate($perPage, ['id', 'sku', 'name', 'available_stock'], 'page', $page);
 
             return [
                 'items' => $products->getCollection()
-                    ->map(fn (Product $product): array => self::productData($product))
+                    ->map(fn(Product $product): array => self::productData($product))
                     ->all(),
-                'total' => $products->total(),
+                'total' => $products->total()
             ];
         });
 
         return new LengthAwarePaginator(Product::hydrate($data['items']), $data['total'], $perPage, $page, [
-            'path' => LengthAwarePaginator::resolveCurrentPath(),
+            'path' => LengthAwarePaginator::resolveCurrentPath()
         ]);
     }
 
     /**
      * Get a product from the cache or PostgreSQL.
      *
+     * @param int $id
      * @return Product
      */
     public static function find(int $id): Product
     {
         // Use the same cache failure policy for individual products.
         $data = self::remember("product:{$id}", function () use ($id): array {
-            $product = Product::query()->find($id) ?? throw ApiException::notFound('product');
+            $product = Product::find($id) ?? throw ApiException::notFound('product');
 
             return self::productData($product);
         });
@@ -58,6 +60,7 @@ class ProductService
     /**
      * Select the public product fields stored in the cache.
      *
+     * @param Product $product
      * @return array{id: int, sku: string, name: string, available_stock: int}
      */
     private static function productData(Product $product): array
@@ -66,7 +69,7 @@ class ProductService
             'id' => $product->id,
             'sku' => $product->sku,
             'name' => $product->name,
-            'available_stock' => $product->available_stock,
+            'available_stock' => $product->available_stock
         ];
     }
 
@@ -75,6 +78,7 @@ class ProductService
      *
      * @template T
      *
+     * @param string $key
      * @param Closure(): T $load
      * @return T
      */
@@ -84,7 +88,7 @@ class ProductService
             return app(Repository::class)->remember(
                 'catalog:v1:' . $key,
                 config()->integer('reservations.catalog_ttl_seconds'),
-                $load,
+                $load
             );
         } catch (PredisException $exception) {
             Log::warning('Catalog cache unavailable; reading PostgreSQL.', ['exception' => $exception->getMessage()]);

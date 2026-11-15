@@ -29,7 +29,7 @@ class StoreRequest extends FormRequest
             'product_id' => [
                 'required',
                 Rule::when(is_string($this->input('product_id')), 'integer', 'integer:strict'),
-                'min:1',
+                'min:1'
             ],
             'quantity' => 'required|integer:strict|min:1',
             'idempotency_key' => 'required|string|max:128|regex:/\S/u|not_regex:/[\x00-\x1F\x7F]/',
@@ -40,7 +40,7 @@ class StoreRequest extends FormRequest
             'created_at' => 'missing',
             'updated_at' => 'missing',
             'finalized_at' => 'missing',
-            'id' => 'missing',
+            'id' => 'missing'
         ];
     }
 }

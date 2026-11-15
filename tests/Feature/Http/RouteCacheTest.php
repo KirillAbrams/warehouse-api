@@ -29,7 +29,7 @@ class RouteCacheTest extends TestCase
             'DB_URL' => '',
             'CACHE_STORE' => 'array',
             'WAREHOUSE_TEST_TOKEN' => $owner->createToken('route-cache')->plainTextToken,
-            'WAREHOUSE_OTHER_TOKEN' => $other->createToken('route-cache')->plainTextToken,
+            'WAREHOUSE_OTHER_TOKEN' => $other->createToken('route-cache')->plainTextToken
         ];
 
         try {
@@ -46,8 +46,8 @@ class RouteCacheTest extends TestCase
                 [
                     PHP_BINARY,
                     base_path('tests/Support/Processes/cached-routes-process.php'),
-                    (string) $product->id,
-                    (string) $reservation->id,
+                    (string)$product->id,
+                    (string)$reservation->id
                 ],
                 base_path(),
                 $environment
@@ -79,7 +79,7 @@ class RouteCacheTest extends TestCase
                 'id' => $product->id,
                 'available_stock' => 3,
                 'reserved_stock' => 2,
-                'confirmed_stock' => 0,
+                'confirmed_stock' => 0
             ]);
         } finally {
             if (is_file($cachePath)) {

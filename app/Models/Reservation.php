@@ -27,7 +27,7 @@ class Reservation extends Model
         'expires_at',
         'finalized_at',
         'created_at',
-        'updated_at',
+        'updated_at'
     ];
 
     /**
@@ -50,7 +50,7 @@ class Reservation extends Model
         'expires_at' => 'immutable_datetime',
         'finalized_at' => 'immutable_datetime',
         'created_at' => 'immutable_datetime',
-        'updated_at' => 'immutable_datetime',
+        'updated_at' => 'immutable_datetime'
     ];
 
     /**
@@ -75,6 +75,10 @@ class Reservation extends Model
 
     /**
      * Confirm stock after the service has locked this reservation and its product.
+     *
+     * @param Product $product
+     * @param CarbonImmutable $now
+     * @return void
      */
     public function setConfirmed(Product $product, CarbonImmutable $now): void
     {
@@ -90,6 +94,10 @@ class Reservation extends Model
 
     /**
      * Return cancelled stock within the service's existing transaction.
+     *
+     * @param Product $product
+     * @param CarbonImmutable $now
+     * @return void
      */
     public function setCancelled(Product $product, CarbonImmutable $now): void
     {
@@ -105,6 +113,10 @@ class Reservation extends Model
 
     /**
      * Return expired stock after the locked deadline check has passed.
+     *
+     * @param Product $product
+     * @param CarbonImmutable $now
+     * @return void
      */
     public function setExpired(Product $product, CarbonImmutable $now): void
     {

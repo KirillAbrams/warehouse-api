@@ -44,7 +44,7 @@ class CreateReservationValidationTest extends TestCase
             'null' => [null],
             'array' => [[]],
             'decimal string' => ['1.0'],
-            'overflow' => ['9223372036854775808'],
+            'overflow' => ['9223372036854775808']
         ];
     }
 
@@ -55,7 +55,7 @@ class CreateReservationValidationTest extends TestCase
 
         $created = $this->postJson(
             '/api/v1/reservations',
-            ['product_id' => (string) $product->id, 'quantity' => 1],
+            ['product_id' => (string)$product->id, 'quantity' => 1],
             ['Idempotency-Key' => 'string-product']
         )
             ->assertCreated()->assertJsonPath('data.product_id', $product->id);
@@ -99,7 +99,7 @@ class CreateReservationValidationTest extends TestCase
             'created_at',
             'updated_at',
             'expires_at',
-            'finalized_at',
+            'finalized_at'
         ] as $field) {
             $cases[$field . ' value'] = [$field, 'client-controlled'];
             $cases[$field . ' null'] = [$field, null];

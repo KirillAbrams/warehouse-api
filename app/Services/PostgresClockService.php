@@ -6,10 +6,12 @@ use App\Contracts\ClockInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 
-class PostgresClock implements ClockInterface
+class PostgresClockService implements ClockInterface
 {
     /**
      * Use the application connection so clock reads follow its transaction locks.
+     *
+     * @param ConnectionInterface $database
      */
     public function __construct(private ConnectionInterface $database)
     {
@@ -17,6 +19,8 @@ class PostgresClock implements ClockInterface
 
     /**
      * Read PostgreSQL wall-clock time rather than transaction start time.
+     *
+     * @return CarbonImmutable
      */
     public function now(): CarbonImmutable
     {

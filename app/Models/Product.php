@@ -23,7 +23,7 @@ class Product extends Model
         'initial_stock',
         'available_stock',
         'reserved_stock',
-        'confirmed_stock',
+        'confirmed_stock'
     ];
 
     /**
@@ -35,7 +35,7 @@ class Product extends Model
         'initial_stock' => 'integer',
         'available_stock' => 'integer',
         'reserved_stock' => 'integer',
-        'confirmed_stock' => 'integer',
+        'confirmed_stock' => 'integer'
     ];
 
     /**

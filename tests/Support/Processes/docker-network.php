@@ -73,9 +73,9 @@ if ($explicit) {
     if (count($state['subnets']) <= $state['overlaps']) {
         $finish(1, "Pool overlaps with other one on this address space\n");
     }
-} elseif ($state['standard_error'] !== null) {
+} else if ($state['standard_error'] !== null) {
     $finish(1, $state['standard_error'] . "\n");
-} elseif ($state['pool_exhausted']) {
+} else if ($state['pool_exhausted']) {
     $finish(1, "all predefined address pools have been fully subnetted\n");
 }
 

@@ -15,29 +15,31 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Prepare repeatable demo records and rotate their access tokens.
+     *
+     * @return void
      */
-    public function run(DemoTokenService $rotate): void
+    public function run(): void
     {
         foreach (DemoTokenService::USERS as $name => $email) {
-            User::query()->firstOrCreate(['email' => $email], [
+            User::firstOrCreate(['email' => $email], [
                 'name' => $name,
-                'password' => bin2hex(random_bytes(32)),
+                'password' => bin2hex(random_bytes(32))
             ]);
         }
 
         foreach ([
             ['KB-001', 'Mechanical keyboard', 5],
             ['MS-001', 'Wireless mouse', 12],
-            ['MN-001', 'Monitor', 3],
+            ['MN-001', 'Monitor', 3]
         ] as [$sku, $name, $stock]) {
-            Product::query()->firstOrCreate(['sku' => $sku], [
+            Product::firstOrCreate(['sku' => $sku], [
                 'name' => $name,
                 'initial_stock' => $stock,
-                'available_stock' => $stock,
+                'available_stock' => $stock
             ]);
         }
 
-        $tokens = $rotate->rotate() ?? throw new LogicException('Demo users disappeared before token rotation.');
+        $tokens = DemoTokenService::rotate() ?? throw new LogicException('Demo users disappeared before token rotation.');
 
         foreach ($tokens as $email => $token) {
             $this->command?->line($email . ' ' . $token);

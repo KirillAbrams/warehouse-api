@@ -13,12 +13,14 @@ class RouteServiceProvider extends ServiceProvider
 {
     /**
      * Register versioned API routes and resolve their model identifiers.
+     *
+     * @return void
      */
     public function boot(): void
     {
         foreach (['product', 'reservation'] as $resource) {
             Route::pattern($resource, '[0-9]+');
-            Route::bind($resource, fn (string $value): Product|Reservation => $this->resolveModel($resource, $value));
+            Route::bind($resource, fn(string $value): Product|Reservation => $this->resolveModel($resource, $value));
         }
 
         Route::middleware('api')
@@ -31,6 +33,10 @@ class RouteServiceProvider extends ServiceProvider
 
     /**
      * Validate integer bounds before PostgreSQL and keep reservation lookup owner-scoped.
+     *
+     * @param string $resource
+     * @param string $value
+     * @return Product|Reservation
      */
     private function resolveModel(string $resource, string $value): Product|Reservation
     {
@@ -44,8 +50,7 @@ class RouteServiceProvider extends ServiceProvider
             return ProductService::find($id);
         }
 
-        return Reservation::query()
-            ->where('user_id', auth()->id())
+        return Reservation::where('user_id', auth()->id())
             ->find($id)
             ?? throw ApiException::notFound('reservation');
     }

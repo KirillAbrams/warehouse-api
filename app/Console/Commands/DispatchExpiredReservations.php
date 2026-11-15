@@ -13,12 +13,24 @@ use Illuminate\Support\Facades\DB;
 
 class DispatchExpiredReservations extends Command
 {
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
     protected $signature = 'reservations:expire {--sync : Process directly without Redis}';
 
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
     protected $description = 'Rediscover expired reservations in PostgreSQL and queue their expiration';
 
     /**
      * Rediscover expired reservations and dispatch or process them.
+     *
+     * @return int
      */
     public function handle(): int
     {
@@ -40,17 +52,17 @@ class DispatchExpiredReservations extends Command
      * Process due reservations in bounded batches, skipping already queued IDs.
      *
      * @param array<int, true>|null $queuedIds
+     * @return int
      */
     private function processDue(?array $queuedIds = null): int
     {
         $count = 0;
 
-        foreach (Reservation::query()
-            ->where('status', ReservationStatusEnum::RESERVED)
+        foreach (Reservation::where('status', ReservationStatusEnum::RESERVED)
             ->where('expires_at', '<=', app(ClockInterface::class)->now()->format('Y-m-d H:i:s.uP'))
             ->lazyById(200, 'id') as $reservation) {
             if ($queuedIds === null) {
-                $count += (int) ReservationService::expire($reservation->id);
+                $count += (int)ReservationService::expire($reservation->id);
             } else {
                 if (isset($queuedIds[$reservation->id])) {
                     continue;

@@ -50,7 +50,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
             'REDIS_PREFIX' => 'warehouse_test_',
             'CACHE_STORE' => 'array',
             'QUEUE_CONNECTION' => 'redis',
-            'XDEBUG_MODE' => 'off',
+            'XDEBUG_MODE' => 'off'
         ];
         $processes = [];
 
@@ -59,7 +59,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
                 $process = new Process(
                     [
                         PHP_BINARY,
-                        base_path('tests/Support/Processes/dispatch-expirations-process.php'),
+                        base_path('tests/Support/Processes/dispatch-expirations-process.php')
                     ],
                     base_path(),
                     $environment
@@ -70,7 +70,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
             }
             $deadline = microtime(true) + 90;
             do {
-                $waiting = (int) DB::scalar(
+                $waiting = (int)DB::scalar(
                     "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'warehouse-dispatch-child' AND datname = 'warehouse_test' AND wait_event_type = 'Lock'"
                 );
                 if ($waiting === 8) {
@@ -87,7 +87,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
                 $this->assertSame(0, json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR)['exit']);
             }
             $actual = $queue->pendingJobs('reservations')
-                ->map(fn ($job) => $job->payload['expiration_reservation_id'])
+                ->map(fn($job) => $job->payload['expiration_reservation_id'])
                 ->sort()
                 ->values()
                 ->all();
@@ -97,7 +97,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
                 'id' => $product->id,
                 'available_stock' => 0,
                 'reserved_stock' => 8,
-                'confirmed_stock' => 0,
+                'confirmed_stock' => 0
             ]);
         } finally {
             if ($locker->inTransaction()) {

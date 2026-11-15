@@ -7,9 +7,14 @@ use Illuminate\Support\Facades\DB;
 
 class DemoTokenService
 {
+    /**
+     * Names and addresses of the two seeded demo users.
+     *
+     * @var array<string, string>
+     */
     public const USERS = [
         'Alice' => 'alice@example.test',
-        'Bob' => 'bob@example.test',
+        'Bob' => 'bob@example.test'
     ];
 
     /**
@@ -21,8 +26,7 @@ class DemoTokenService
     {
         // Serialize concurrent token rotations and roll back both users on failure.
         return DB::transaction(function (): ?array {
-            $users = User::query()
-                ->whereIn('email', array_values(self::USERS))
+            $users = User::whereIn('email', array_values(self::USERS))
                 ->orderBy('email')
                 ->lockForUpdate()
                 ->get();

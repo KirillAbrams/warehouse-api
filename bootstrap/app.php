@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
         commands: __DIR__ . '/../routes/console.php',
-        health: '/up',
+        health: '/up'
     )
     // Return an authentication error instead of redirecting token clients.
     ->withMiddleware(function (Middleware $middleware): void {
@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Render API errors as JSON even without an Accept header.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn(Request $request) => $request->is('api/*') || $request->expectsJson()
         );
         // Include field errors in validation responses.
         $exceptions->render(function (ValidationException $exception, Request $request) {
@@ -30,8 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 'error' => [
                     'code' => 'validation_failed',
                     'message' => 'The request data is invalid.',
-                    'details' => $exception->errors(),
-                ],
+                    'details' => $exception->errors()
+                ]
             ], 422);
         });
 
@@ -40,8 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'error' => [
                     'code' => 'unauthenticated',
-                    'message' => 'A valid bearer token is required.',
-                ],
+                    'message' => 'A valid bearer token is required.'
+                ]
             ], 401);
         });
 
@@ -52,8 +52,8 @@ return Application::configure(basePath: dirname(__DIR__))
                     'code' => $exception->getStatusCode() === 404 ? 'not_found' : 'http_error',
                     'message' => $exception->getStatusCode() === 404
                         ? 'Resource not found.'
-                        : 'The request could not be processed.',
-                ],
+                        : 'The request could not be processed.'
+                ]
             ], $exception->getStatusCode(), $exception->getHeaders());
         });
 
@@ -62,8 +62,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'error' => [
                     'code' => 'internal_error',
-                    'message' => 'An internal error occurred.',
-                ],
+                    'message' => 'An internal error occurred.'
+                ]
             ], 500);
         });
     })

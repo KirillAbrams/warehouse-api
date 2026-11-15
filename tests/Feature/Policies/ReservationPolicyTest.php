@@ -37,7 +37,7 @@ class ReservationPolicyTest extends TestCase
         $owner = User::factory()->create();
         $reservation = $this->reservation($owner);
         $this->withToken($owner->createToken('policy-wiring')->plainTextToken);
-        Gate::before(fn () => Response::denyAsNotFound());
+        Gate::before(fn() => Response::denyAsNotFound());
 
         $this->getJson('/api/v1/reservations/' . $reservation->id)
             ->assertNotFound()
@@ -58,7 +58,7 @@ class ReservationPolicyTest extends TestCase
         $product = Product::factory()->create(['available_stock' => 3, 'reserved_stock' => 2]);
         $now = CarbonImmutable::parse('2026-11-15T10:00:00Z');
 
-        return Reservation::query()->create([
+        return Reservation::create([
             'user_id' => $owner->id,
             'product_id' => $product->id,
             'quantity' => 2,
@@ -66,7 +66,7 @@ class ReservationPolicyTest extends TestCase
             'status' => ReservationStatusEnum::RESERVED,
             'created_at' => $now,
             'updated_at' => $now,
-            'expires_at' => $now->addMinutes(10),
+            'expires_at' => $now->addMinutes(10)
         ]);
 
     }

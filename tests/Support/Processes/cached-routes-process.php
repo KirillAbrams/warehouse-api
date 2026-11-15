@@ -21,7 +21,7 @@ $request = function (string $method, string $path, string $token) use ($app, $ke
 
     return [
         'status' => $response->getStatusCode(),
-        'body' => json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        'body' => json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR)
     ];
 };
 
@@ -29,7 +29,7 @@ $token = getenv('WAREHOUSE_TEST_TOKEN');
 $result = [
     'product' => $request('GET', 'products/' . $argv[1], $token),
     'reservation' => $request('GET', 'reservations/' . $argv[2], $token),
-    'invalid_ids' => [],
+    'invalid_ids' => []
 ];
 
 foreach (['0', '9223372036854775808', '999999999999999999999999999999999999'] as $id) {
@@ -37,7 +37,7 @@ foreach (['0', '9223372036854775808', '999999999999999999999999999999999999'] as
         ['GET', 'products/' . $id],
         ['GET', 'reservations/' . $id],
         ['POST', 'reservations/' . $id . '/confirm'],
-        ['POST', 'reservations/' . $id . '/cancel'],
+        ['POST', 'reservations/' . $id . '/cancel']
     ] as [$method, $path]) {
         $result['invalid_ids'][] = $request($method, $path, $token);
     }

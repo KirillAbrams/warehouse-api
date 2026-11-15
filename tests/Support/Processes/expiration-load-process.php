@@ -36,14 +36,14 @@ try {
             'idempotency_key' => 'load-' . $index, 'status' => 'reserved',
             'created_at' => $now->subMinutes(20)->format('Y-m-d H:i:s.uP'),
             'expires_at' => $now->subMinutes(10)->format('Y-m-d H:i:s.uP'),
-            'updated_at' => $now->subMinutes(20)->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $now->subMinutes(20)->format('Y-m-d H:i:s.uP')
         ];
     }
     DB::table('reservations')->insert($rows);
     $jobs = DB::table('reservations')
         ->where('user_id', $owner->id)
         ->pluck('id')
-        ->map(fn (int $id) => new ExpireReservationJob($id))
+        ->map(fn(int $id) => new ExpireReservationJob($id))
         ->all();
     $queue->bulk($jobs, '', 'reservations');
     unset($rows, $jobs);
@@ -60,7 +60,7 @@ try {
     $report = [
         'queued_jobs' => $queue->size('reservations'),
         'scan_seconds' => $durations,
-        'peak_memory_bytes' => memory_get_peak_usage(true),
+        'peak_memory_bytes' => memory_get_peak_usage(true)
     ];
 } finally {
     $queue->clear('reservations');

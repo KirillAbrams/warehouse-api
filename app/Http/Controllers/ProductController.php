@@ -14,6 +14,9 @@ class ProductController extends Controller
      * Get a page of products.
      *
      * GET /api/v1/products
+     *
+     * @param FilterRequest $request
+     * @return JsonResponse
      */
     public function index(FilterRequest $request): JsonResponse
     {
@@ -26,6 +29,9 @@ class ProductController extends Controller
      * Get a product from the catalogue snapshot.
      *
      * GET /api/v1/products/{product}
+     *
+     * @param Product $product
+     * @return JsonResponse
      */
     public function show(Product $product): JsonResponse
     {

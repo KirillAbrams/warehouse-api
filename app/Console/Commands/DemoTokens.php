@@ -7,12 +7,24 @@ use Illuminate\Console\Command;
 
 class DemoTokens extends Command
 {
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
     protected $signature = 'demo:tokens';
 
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
     protected $description = 'Rotate and print tokens for the two seeded demo users';
 
     /**
      * Print new demo tokens after both replacements commit.
+     *
+     * @return int
      */
     public function handle(): int
     {

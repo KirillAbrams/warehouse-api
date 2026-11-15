@@ -29,10 +29,10 @@ class LegacyExpirationJobTest extends TestCase
         $product = Product::factory()->create([
             'initial_stock' => 4,
             'available_stock' => 3,
-            'reserved_stock' => 1,
+            'reserved_stock' => 1
         ]);
         $now = CarbonImmutable::now('UTC');
-        $reservation = Reservation::query()->create([
+        $reservation = Reservation::create([
             'user_id' => $owner->id,
             'product_id' => $product->id,
             'quantity' => 1,
@@ -40,13 +40,13 @@ class LegacyExpirationJobTest extends TestCase
             'status' => ReservationStatusEnum::RESERVED,
             'created_at' => $now->subMinutes(11),
             'updated_at' => $now->subMinutes(11),
-            'expires_at' => $now->subMinute(),
+            'expires_at' => $now->subMinute()
         ]);
         $payload = json_decode(file_get_contents(base_path('tests/Fixtures/expiration-v1.json')), true, flags: JSON_THROW_ON_ERROR);
         $payload['data']['command'] = str_replace(
             's:13:"reservationId";i:42;',
             's:13:"reservationId";i:' . $reservation->id . ';',
-            $payload['data']['command'],
+            $payload['data']['command']
         );
         if ($hasMetadata) {
             $payload['expiration_reservation_id'] = $reservation->id;

@@ -67,7 +67,7 @@ class InventoryPropertyTest extends TestCase
                 $product->available_stock + $product->reserved_stock + $product->confirmed_stock,
                 $context
             );
-            $this->assertSame(1, Reservation::query()->where('product_id', $product->id)->count(), $context);
+            $this->assertSame(1, Reservation::where('product_id', $product->id)->count(), $context);
         }
     }
 }

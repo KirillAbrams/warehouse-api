@@ -20,7 +20,7 @@ class ExpirationDispatchLoadTest extends TestCase
             'REDIS_PREFIX' => 'warehouse_test_',
             'CACHE_STORE' => 'array',
             'QUEUE_CONNECTION' => 'redis',
-            'XDEBUG_MODE' => 'off',
+            'XDEBUG_MODE' => 'off'
         ];
         $process = new Process(
             [PHP_BINARY, base_path('tests/Support/Processes/expiration-load-process.php')],

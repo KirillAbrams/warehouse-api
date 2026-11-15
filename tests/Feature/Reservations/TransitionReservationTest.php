@@ -18,7 +18,7 @@ class TransitionReservationTest extends TestCase
 
     #[DataProvider('unsupportedTargets')]
     public function test_unsupported_target_is_rejected_without_changing_any_saved_fields(
-        string $target,
+        string $target
     ): void {
         $owner = User::factory()->create();
         $product = Product::factory()->create();
@@ -45,14 +45,14 @@ class TransitionReservationTest extends TestCase
     {
         return [
             'reserved is not a client transition' => ['reserved'],
-            'expired is only applied by expiration' => ['expired'],
+            'expired is only applied by expiration' => ['expired']
         ];
     }
 
     #[DataProvider('inaccessibleReservations')]
     public function test_the_service_hides_inaccessible_reservations_without_changing_saved_fields(
         string $target,
-        bool $missing,
+        bool $missing
     ): void {
         $owner = User::factory()->create();
         $other = User::factory()->create();
@@ -85,7 +85,7 @@ class TransitionReservationTest extends TestCase
             'confirm foreign' => ['confirmed', false],
             'cancel foreign' => ['cancelled', false],
             'confirm missing' => ['confirmed', true],
-            'cancel missing' => ['cancelled', true],
+            'cancel missing' => ['cancelled', true]
         ];
     }
 }

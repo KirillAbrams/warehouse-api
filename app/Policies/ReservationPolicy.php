@@ -10,6 +10,10 @@ class ReservationPolicy
 {
     /**
      * Allow the owner to view a reservation and hide foreign records.
+     *
+     * @param User $user
+     * @param Reservation $reservation
+     * @return Response
      */
     public function view(User $user, Reservation $reservation): Response
     {
@@ -20,6 +24,10 @@ class ReservationPolicy
 
     /**
      * Authorize the owner before the service checks state and deadline under locks.
+     *
+     * @param User $user
+     * @param Reservation $reservation
+     * @return Response
      */
     public function confirm(User $user, Reservation $reservation): Response
     {
@@ -28,6 +36,10 @@ class ReservationPolicy
 
     /**
      * Authorize cancellation without changing the service's conflict responses.
+     *
+     * @param User $user
+     * @param Reservation $reservation
+     * @return Response
      */
     public function cancel(User $user, Reservation $reservation): Response
     {

@@ -7,7 +7,7 @@ return [
     'connections' => [
 
         'sync' => [
-            'driver' => 'sync',
+            'driver' => 'sync'
         ],
 
         'database' => [
@@ -15,17 +15,17 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => true,
+            'retry_after' => (int)env('DB_QUEUE_RETRY_AFTER', 90),
+            'after_commit' => true
         ],
 
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),
             'queue' => env('BEANSTALKD_QUEUE', 'default'),
-            'retry_after' => (int) env('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => (int)env('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
             'block_for' => 0,
-            'after_commit' => true,
+            'after_commit' => true
         ],
 
         'sqs' => [
@@ -36,45 +36,45 @@ return [
             'queue' => env('SQS_QUEUE', 'default'),
             'suffix' => env('SQS_SUFFIX'),
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-            'after_commit' => true,
+            'after_commit' => true
         ],
 
         'redis' => [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => (int)env('REDIS_QUEUE_RETRY_AFTER', 90),
             'block_for' => null,
-            'after_commit' => true,
+            'after_commit' => true
         ],
 
         'deferred' => [
-            'driver' => 'deferred',
+            'driver' => 'deferred'
         ],
 
         'background' => [
-            'driver' => 'background',
+            'driver' => 'background'
         ],
 
         'failover' => [
             'driver' => 'failover',
             'connections' => [
                 'database',
-                'deferred',
-            ],
-        ],
+                'deferred'
+            ]
+        ]
 
     ],
 
     'batching' => [
         'database' => env('DB_CONNECTION', 'sqlite'),
-        'table' => 'job_batches',
+        'table' => 'job_batches'
     ],
 
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'sqlite'),
-        'table' => 'failed_jobs',
-    ],
+        'table' => 'failed_jobs'
+    ]
 
 ];
