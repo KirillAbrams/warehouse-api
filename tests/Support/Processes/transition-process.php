@@ -8,13 +8,12 @@ use App\Services\ReservationService;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
-require dirname(__DIR__, 3).'/vendor/autoload.php';
-$app = require dirname(__DIR__, 3).'/bootstrap/app.php';
+require dirname(__DIR__, 3) . '/vendor/autoload.php';
+$app = require dirname(__DIR__, 3) . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 if (DB::scalar('SELECT current_database()') !== 'warehouse_test') {
     throw new RuntimeException('Deadline probes require warehouse_test.');
 }
-$transition = $app->make(ReservationService::class);
 $reservation = Reservation::query()->findOrFail((int) $argv[2]);
 $reservation->getAttribute('expires_at');
 Product::query()->findOrFail($reservation->product_id);
@@ -26,7 +25,7 @@ DB::select('SELECT pg_advisory_lock(hashtextextended(?, 0))', [$argv[4]]);
 DB::select('SELECT pg_advisory_unlock(hashtextextended(?, 0))', [$argv[4]]);
 
 try {
-    $transition->transition((int) $argv[1], (int) $argv[2], ReservationStatusEnum::from($argv[3]));
+    ReservationService::transition((int) $argv[1], (int) $argv[2], ReservationStatusEnum::from($argv[3]));
     echo json_encode(['status' => 200], JSON_THROW_ON_ERROR);
 } catch (ApiException $exception) {
     echo json_encode(['status' => $exception->httpStatus, 'code' => $exception->errorCode], JSON_THROW_ON_ERROR);

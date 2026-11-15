@@ -17,7 +17,7 @@ class DemoTokenService
      *
      * @return array<string, string>|null
      */
-    public function rotate(): ?array
+    public static function rotate(): ?array
     {
         // Serialize concurrent token rotations and roll back both users on failure.
         return DB::transaction(function (): ?array {

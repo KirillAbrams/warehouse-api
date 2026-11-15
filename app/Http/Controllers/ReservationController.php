@@ -3,70 +3,69 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ReservationStatusEnum;
-use App\Exceptions\ApiException;
 use App\Http\Requests\Reservation\StoreRequest;
 use App\Http\Resources\ReservationResource;
 use App\Models\Reservation;
 use App\Services\ReservationService;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ReservationController extends Controller
 {
     /**
-     * Create a reservation or return an idempotent replay.
+     * Create a reservation or return its earlier idempotent result.
+     *
+     * POST /api/v1/reservations
      */
-    public function store(StoreRequest $request, ReservationService $reservations): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
-        $user = $request->user() ?? throw new AuthenticationException;
-        $result = $reservations->create(
-            (int) $user->getAuthIdentifier(),
+        $reservation = ReservationService::create(
+            (int) auth()->id(),
             (int) $request->validated('product_id'),
             (int) $request->validated('quantity'),
             $request->validated('idempotency_key'),
         );
 
-        return (new ReservationResource($result['reservation']))
-            ->response()
-            ->setStatusCode($result['created'] ? 201 : 200);
-    }
-
-    /**
-     * Return the saved state of an owned reservation.
-     */
-    public function show(Request $request, int $reservation): ReservationResource
-    {
-        $user = $request->user() ?? throw new AuthenticationException;
-        $record = Reservation::query()
-            ->where('user_id', $user->getAuthIdentifier())
-            ->find($reservation)
-            ?? throw ApiException::notFound('reservation');
-
-        return new ReservationResource($record);
-    }
-
-    /**
-     * Confirm an owned reservation through the shared transaction rules.
-     */
-    public function confirm(Request $request, int $reservation, ReservationService $reservations): ReservationResource
-    {
-        $user = $request->user() ?? throw new AuthenticationException;
-
-        return new ReservationResource(
-            $reservations->transition((int) $user->getAuthIdentifier(), $reservation, ReservationStatusEnum::CONFIRMED),
+        return response()->json(
+            ['data' => new ReservationResource($reservation)],
+            $reservation->wasRecentlyCreated ? 201 : 200,
         );
     }
 
     /**
-     * Cancel an owned reservation through the shared transaction rules.
+     * Get the saved state of an owned reservation.
+     *
+     * GET /api/v1/reservations/{reservation}
      */
-    public function cancel(Request $request, int $reservation, ReservationService $reservations): ReservationResource
+    public function show(Reservation $reservation): JsonResponse
     {
-        $user = $request->user() ?? throw new AuthenticationException;
+        $this->authorize('view', $reservation);
 
-        return new ReservationResource(
-            $reservations->transition((int) $user->getAuthIdentifier(), $reservation, ReservationStatusEnum::CANCELLED),
-        );
+        return response()->json(['data' => new ReservationResource($reservation)]);
+    }
+
+    /**
+     * Confirm an owned reservation before its deadline.
+     *
+     * POST /api/v1/reservations/{reservation}/confirm
+     */
+    public function confirm(Reservation $reservation): JsonResponse
+    {
+        $this->authorize('confirm', $reservation);
+        $reservation = ReservationService::transition((int) auth()->id(), $reservation->id, ReservationStatusEnum::CONFIRMED);
+
+        return response()->json(['data' => new ReservationResource($reservation)]);
+    }
+
+    /**
+     * Cancel an owned reservation before its deadline.
+     *
+     * POST /api/v1/reservations/{reservation}/cancel
+     */
+    public function cancel(Reservation $reservation): JsonResponse
+    {
+        $this->authorize('cancel', $reservation);
+        $reservation = ReservationService::transition((int) auth()->id(), $reservation->id, ReservationStatusEnum::CANCELLED);
+
+        return response()->json(['data' => new ReservationResource($reservation)]);
     }
 }

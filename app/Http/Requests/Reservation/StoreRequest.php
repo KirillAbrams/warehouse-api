@@ -21,7 +21,7 @@ class StoreRequest extends FormRequest
     /**
      * Validate reservation input and reject server-owned fields.
      *
-     * @return array<string, list<string|ConditionalRules>>
+     * @return array<string, string|list<string|ConditionalRules>>
      */
     public function rules(): array
     {
@@ -31,16 +31,16 @@ class StoreRequest extends FormRequest
                 Rule::when(is_string($this->input('product_id')), 'integer', 'integer:strict'),
                 'min:1',
             ],
-            'quantity' => ['required', 'integer:strict', 'min:1'],
-            'idempotency_key' => ['required', 'string', 'max:128', 'regex:/\S/u', 'not_regex:/[\x00-\x1F\x7F]/'],
-            'user_id' => ['missing'],
-            'owner_id' => ['missing'],
-            'status' => ['missing'],
-            'expires_at' => ['missing'],
-            'created_at' => ['missing'],
-            'updated_at' => ['missing'],
-            'finalized_at' => ['missing'],
-            'id' => ['missing'],
+            'quantity' => 'required|integer:strict|min:1',
+            'idempotency_key' => 'required|string|max:128|regex:/\S/u|not_regex:/[\x00-\x1F\x7F]/',
+            'user_id' => 'missing',
+            'owner_id' => 'missing',
+            'status' => 'missing',
+            'expires_at' => 'missing',
+            'created_at' => 'missing',
+            'updated_at' => 'missing',
+            'finalized_at' => 'missing',
+            'id' => 'missing',
         ];
     }
 }

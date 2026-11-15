@@ -5,8 +5,8 @@ use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
+require __DIR__ . '/../vendor/autoload.php';
+$app = require __DIR__ . '/../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 // Use the API service inside this Compose project unless a URL is supplied.
@@ -43,7 +43,7 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
     $handles = [];
     for ($index = 0; $index < 20; $index++) {
         $key = $scenario === 'same_key' ? "parallel-{$run}" : "parallel-{$run}-{$index}";
-        $handle = curl_init($baseUrl.'/api/v1/reservations');
+        $handle = curl_init($baseUrl . '/api/v1/reservations');
         curl_setopt_array($handle, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode(['product_id' => $product->id, 'quantity' => 1], JSON_THROW_ON_ERROR),
@@ -73,7 +73,7 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
                 throw new RuntimeException(curl_multi_strerror($result));
             }
             $maxInFlight = max($maxInFlight, $running);
-            if (! $released) {
+            if (!$released) {
                 $waiters = (int) DB::scalar(
                     "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()"
                 );
@@ -111,7 +111,7 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
         } elseif (
             $scenario !== 'distinct_keys' || $status !== 409 || $response['error']['code'] !== 'insufficient_stock'
         ) {
-            throw new RuntimeException('Unexpected response: '.json_encode($response, JSON_THROW_ON_ERROR));
+            throw new RuntimeException('Unexpected response: ' . json_encode($response, JSON_THROW_ON_ERROR));
         }
         curl_multi_remove_handle($multi, $handle);
     }
@@ -127,9 +127,9 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
     $expected = $scenario === 'distinct_keys' ? [201 => 1, 409 => 19] : [200 => 19, 201 => 1];
     if ($statuses !== $expected || count(array_unique($ids)) !== 1 || (int) $row->reservation_count !== 1
         || (int) $row->initial_stock !== 1 || (int) $row->available_stock !== 0 || (int) $row->reserved_stock !== 1 || (int) $row->confirmed_stock !== 0
-        || $maxInFlight !== 20 || ! $released) {
+        || $maxInFlight !== 20 || !$released) {
         throw new RuntimeException(
-            'Concurrency invariant failed: '.json_encode([$statuses, $row, $maxInFlight], JSON_THROW_ON_ERROR)
+            'Concurrency invariant failed: ' . json_encode([$statuses, $row, $maxInFlight], JSON_THROW_ON_ERROR)
         );
     }
 
@@ -140,4 +140,4 @@ foreach (['distinct_keys', 'same_key'] as $scenario) {
     ];
 }
 
-echo json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR).PHP_EOL;
+echo json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL;

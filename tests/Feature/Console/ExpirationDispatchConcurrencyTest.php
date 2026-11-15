@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Console;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\ReservationService;
@@ -26,14 +26,13 @@ class ExpirationDispatchConcurrencyTest extends TestCase
         $queue = Queue::connection('redis');
         $queue->clear('reservations');
         $clock = new MutableClock(CarbonImmutable::now('UTC')->subMinutes(20));
-        $this->app->instance(Clock::class, $clock);
+        $this->app->instance(ClockInterface::class, $clock);
         $owner = User::factory()->create();
         $product = Product::factory()->create(['initial_stock' => 8, 'available_stock' => 8]);
         $ids = [];
 
         for ($index = 0; $index < 8; $index++) {
-            $ids[] = $this->app->make(ReservationService::class)
-                ->create($owner->id, $product->id, 1, 'parallel-'.$index)['reservation']->id;
+            $ids[] = ReservationService::create($owner->id, $product->id, 1, 'parallel-' . $index)->id;
         }
         $configuration = config('database.connections.pgsql');
         $locker = new PDO(
@@ -84,7 +83,7 @@ class ExpirationDispatchConcurrencyTest extends TestCase
 
             foreach ($processes as $process) {
                 $process->wait();
-                $this->assertTrue($process->isSuccessful(), $process->getErrorOutput().$process->getOutput());
+                $this->assertTrue($process->isSuccessful(), $process->getErrorOutput() . $process->getOutput());
                 $this->assertSame(0, json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR)['exit']);
             }
             $actual = $queue->pendingJobs('reservations')

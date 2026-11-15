@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use App\Enums\ReservationStatusEnum;
 use App\Jobs\ExpireReservationJob;
 use App\Models\Reservation;
@@ -20,18 +20,15 @@ class DispatchExpiredReservations extends Command
     /**
      * Rediscover expired reservations and dispatch or process them.
      */
-    public function handle(
-        Clock $clock,
-        ReservationService $reservations,
-        ReservationQueueService $queued,
-    ): int {
+    public function handle(): int
+    {
         // Keep dispatchers serialized until all queue writes complete.
         $count = $this->option('sync')
-            ? $this->processDue($clock, $reservations)
-            : DB::transaction(function () use ($clock, $reservations, $queued): int {
+            ? $this->processDue()
+            : DB::transaction(function (): int {
                 DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ['reservation:expire:dispatch']);
 
-                return $this->processDue($clock, $reservations, $queued->getQueuedReservationIds());
+                return $this->processDue(ReservationQueueService::getQueuedReservationIds());
             });
 
         $this->info("Processed {$count} due reservation(s).");
@@ -42,18 +39,18 @@ class DispatchExpiredReservations extends Command
     /**
      * Process due reservations in bounded batches, skipping already queued IDs.
      *
-     * @param  array<int, true>|null  $queuedIds
+     * @param array<int, true>|null $queuedIds
      */
-    private function processDue(Clock $clock, ReservationService $reservations, ?array $queuedIds = null): int
+    private function processDue(?array $queuedIds = null): int
     {
         $count = 0;
 
         foreach (Reservation::query()
             ->where('status', ReservationStatusEnum::RESERVED)
-            ->where('expires_at', '<=', $clock->now()->format('Y-m-d H:i:s.uP'))
+            ->where('expires_at', '<=', app(ClockInterface::class)->now()->format('Y-m-d H:i:s.uP'))
             ->lazyById(200, 'id') as $reservation) {
             if ($queuedIds === null) {
-                $count += (int) $reservations->expire($reservation->id);
+                $count += (int) ReservationService::expire($reservation->id);
             } else {
                 if (isset($queuedIds[$reservation->id])) {
                     continue;

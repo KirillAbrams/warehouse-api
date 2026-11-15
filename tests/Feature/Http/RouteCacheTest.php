@@ -18,9 +18,8 @@ class RouteCacheTest extends TestCase
         $owner = User::factory()->create();
         $other = User::factory()->create();
         $product = Product::factory()->create();
-        $reservation = $this->app->make(ReservationService::class)
-            ->create($owner->id, $product->id, 2, 'cached-route')['reservation'];
-        $cachePath = sys_get_temp_dir().'/warehouse-routes-'.bin2hex(random_bytes(8)).'.php';
+        $reservation = ReservationService::create($owner->id, $product->id, 2, 'cached-route');
+        $cachePath = sys_get_temp_dir() . '/warehouse-routes-' . bin2hex(random_bytes(8)) . '.php';
         $environment = [
             ...getenv(),
             'APP_ENV' => 'testing',

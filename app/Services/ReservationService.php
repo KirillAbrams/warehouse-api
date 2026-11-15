@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use App\Enums\ReservationStatusEnum;
 use App\Exceptions\ApiException;
 use App\Models\Product;
@@ -12,21 +12,19 @@ use InvalidArgumentException;
 
 class ReservationService
 {
-    public function __construct(private Clock $clock) {}
-
     /**
      * Reserve stock atomically or return an identical earlier request.
      *
-     * @return array{reservation: Reservation, created: bool}
+     * @return Reservation
      */
-    public function create(
+    public static function create(
         int $userId,
         int $productId,
         int $quantity,
         string $key,
-    ): array {
+    ): Reservation {
         // Persist the reservation and stock counters in the same transaction.
-        return DB::transaction(function () use ($userId, $productId, $quantity, $key): array {
+        return DB::transaction(function () use ($userId, $productId, $quantity, $key): Reservation {
             // Lock the user/key pair before its reservation row exists.
             // Hash collisions only serialize otherwise independent requests.
             DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ["reservation:create:{$userId}:{$key}"]);
@@ -46,7 +44,7 @@ class ReservationService
                     );
                 }
 
-                return ['reservation' => $existing, 'created' => false];
+                return $existing;
             }
 
             $product = Product::query()
@@ -58,7 +56,7 @@ class ReservationService
                 throw new ApiException(409, 'insufficient_stock', 'Not enough stock is available.');
             }
 
-            $now = $this->clock->now();
+            $now = app(ClockInterface::class)->now();
             $product->available_stock -= $quantity;
             $product->reserved_stock += $quantity;
             $product->save();
@@ -74,16 +72,16 @@ class ReservationService
                 'expires_at' => $now->addSeconds(config()->integer('reservations.ttl_seconds')),
             ]);
 
-            return ['reservation' => $reservation, 'created' => true];
+            return $reservation;
         }, attempts: 3);
     }
 
     /**
      * Confirm or cancel an owned reservation before its deadline.
      */
-    public function transition(int $userId, int $reservationId, ReservationStatusEnum $target): Reservation
+    public static function transition(int $userId, int $reservationId, ReservationStatusEnum $target): Reservation
     {
-        if (! \in_array($target, [ReservationStatusEnum::CONFIRMED, ReservationStatusEnum::CANCELLED], true)) {
+        if (!\in_array($target, [ReservationStatusEnum::CONFIRMED, ReservationStatusEnum::CANCELLED], true)) {
             throw new InvalidArgumentException('Only confirm and cancel are client transitions.');
         }
 
@@ -117,25 +115,17 @@ class ReservationService
 
             // Read wall-clock time after acquiring both row locks.
             // Transaction start time may be stale after waiting for a lock.
-            $now = $this->clock->now();
+            $now = app(ClockInterface::class)->now();
 
             if ($now->greaterThanOrEqualTo($reservation->expires_at)) {
                 throw new ApiException(409, 'reservation_expired', 'The reservation has expired.');
             }
 
-            $product->reserved_stock -= $reservation->quantity;
-
             if ($target === ReservationStatusEnum::CONFIRMED) {
-                $product->confirmed_stock += $reservation->quantity;
+                $reservation->setConfirmed($product, $now);
             } else {
-                $product->available_stock += $reservation->quantity;
+                $reservation->setCancelled($product, $now);
             }
-
-            $product->save();
-            $reservation->status = $target;
-            $reservation->finalized_at = $now;
-            $reservation->updated_at = $now;
-            $reservation->save();
 
             return $reservation;
         }, attempts: 3);
@@ -144,7 +134,7 @@ class ReservationService
     /**
      * Release reserved stock once after its deadline.
      */
-    public function expire(int $reservationId): bool
+    public static function expire(int $reservationId): bool
     {
         // Finalize the reservation and release stock in one transaction.
         return DB::transaction(function () use ($reservationId): bool {
@@ -159,20 +149,13 @@ class ReservationService
             $product = Product::query()
                 ->lockForUpdate()
                 ->findOrFail($reservation->product_id);
-            $now = $this->clock->now();
+            $now = app(ClockInterface::class)->now();
 
             if ($now->lessThan($reservation->expires_at)) {
                 return false;
             }
 
-            $product->reserved_stock -= $reservation->quantity;
-            $product->available_stock += $reservation->quantity;
-            $product->save();
-
-            $reservation->status = ReservationStatusEnum::EXPIRED;
-            $reservation->finalized_at = $now;
-            $reservation->updated_at = $now;
-            $reservation->save();
+            $reservation->setExpired($product, $now);
 
             return true;
         }, attempts: 3);

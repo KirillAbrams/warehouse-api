@@ -21,12 +21,12 @@ class RedisCatalogTest extends TestCase
         $this->withToken(User::factory()->create()->createToken('test')->plainTextToken);
         $cache = Cache::store('redis');
         $this->app->instance(Repository::class, $cache);
-        foreach (['catalog:v1:product:'.$product->id, 'catalog:v1:page:1:20'] as $key) {
+        foreach (['catalog:v1:product:' . $product->id, 'catalog:v1:page:1:20'] as $key) {
             $cache->forget($key);
         }
 
-        $first = $this->getJson('/api/v1/products/'.$product->id)->assertOk();
-        $this->getJson('/api/v1/products/'.$product->id)->assertOk()->assertExactJson($first->json());
+        $first = $this->getJson('/api/v1/products/' . $product->id)->assertOk();
+        $this->getJson('/api/v1/products/' . $product->id)->assertOk()->assertExactJson($first->json());
         $firstPage = $this->getJson('/api/v1/products')->assertOk();
         $this->getJson('/api/v1/products')->assertOk()->assertExactJson($firstPage->json());
     }
@@ -40,7 +40,7 @@ class RedisCatalogTest extends TestCase
             $cache->shouldReceive('remember')->twice()->andThrow(new StreamInitException('Redis unavailable'));
         });
 
-        $this->getJson('/api/v1/products/'.$product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
+        $this->getJson('/api/v1/products/' . $product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
         $this->getJson('/api/v1/products')->assertOk()->assertJsonPath('meta.total', 1);
         Log::shouldHaveReceived('warning')->twice();
     }

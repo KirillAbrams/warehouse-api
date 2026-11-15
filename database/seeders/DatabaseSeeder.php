@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
         $tokens = $rotate->rotate() ?? throw new LogicException('Demo users disappeared before token rotation.');
 
         foreach ($tokens as $email => $token) {
-            $this->command?->line($email.' '.$token);
+            $this->command?->line($email . ' ' . $token);
         }
     }
 }

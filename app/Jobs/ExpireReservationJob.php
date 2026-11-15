@@ -34,8 +34,8 @@ class ExpireReservationJob implements ShouldQueue
     /**
      * Recheck the saved state and deadline before releasing stock.
      */
-    public function handle(ReservationService $reservations): void
+    public function handle(): void
     {
-        $reservations->expire($this->reservationId);
+        ReservationService::expire($this->reservationId);
     }
 }

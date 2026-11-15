@@ -3,6 +3,7 @@
 namespace Tests\Feature\Reservations;
 
 use App\Enums\ReservationStatusEnum;
+use App\Exceptions\ApiException;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\ReservationService;
@@ -21,14 +22,12 @@ class TransitionReservationTest extends TestCase
     ): void {
         $owner = User::factory()->create();
         $product = Product::factory()->create();
-        $reservation = $this->app->make(ReservationService::class)
-            ->create($owner->id, $product->id, 1, 'unsupported-target')['reservation'];
+        $reservation = ReservationService::create($owner->id, $product->id, 1, 'unsupported-target');
         $productBefore = $product->fresh()->getRawOriginal();
         $reservationBefore = $reservation->fresh()->getRawOriginal();
 
         try {
-            $this->app->make(ReservationService::class)
-                ->transition($owner->id, $reservation->id, ReservationStatusEnum::from($target));
+            ReservationService::transition($owner->id, $reservation->id, ReservationStatusEnum::from($target));
             $this->fail('An unsupported client transition must be rejected.');
         } catch (InvalidArgumentException $exception) {
             $this->assertSame('Only confirm and cancel are client transitions.', $exception->getMessage());
@@ -47,6 +46,46 @@ class TransitionReservationTest extends TestCase
         return [
             'reserved is not a client transition' => ['reserved'],
             'expired is only applied by expiration' => ['expired'],
+        ];
+    }
+
+    #[DataProvider('inaccessibleReservations')]
+    public function test_the_service_hides_inaccessible_reservations_without_changing_saved_fields(
+        string $target,
+        bool $missing,
+    ): void {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $product = Product::factory()->create();
+        $reservation = ReservationService::create($owner->id, $product->id, 1, 'service-owner');
+        $productBefore = $product->fresh()->getRawOriginal();
+        $reservationBefore = $reservation->fresh()->getRawOriginal();
+        $id = $missing ? PHP_INT_MAX : $reservation->id;
+
+        try {
+            ReservationService::transition($other->id, $id, ReservationStatusEnum::from($target));
+            $this->fail('The locked service lookup must reject missing and foreign reservations.');
+        } catch (ApiException $exception) {
+            $this->assertSame(404, $exception->httpStatus);
+            $this->assertSame('reservation_not_found', $exception->errorCode);
+            $this->assertSame('Reservation not found.', $exception->getMessage());
+        }
+
+        $this->assertSame($productBefore, $product->fresh()->getRawOriginal());
+        $this->assertSame($reservationBefore, $reservation->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('reservations', 1);
+    }
+
+    /**
+     * @return array<string, array{string, bool}>
+     */
+    public static function inaccessibleReservations(): array
+    {
+        return [
+            'confirm foreign' => ['confirmed', false],
+            'cancel foreign' => ['cancelled', false],
+            'confirm missing' => ['confirmed', true],
+            'cancel missing' => ['cancelled', true],
         ];
     }
 }

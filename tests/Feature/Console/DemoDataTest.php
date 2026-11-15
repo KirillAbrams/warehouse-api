@@ -24,7 +24,7 @@ class DemoDataTest extends TestCase
         $this->assertSame(2, PersonalAccessToken::query()->where('name', 'demo')->count());
         $owner = User::query()->where('email', 'alice@example.test')->firstOrFail();
         $product = Product::query()->where('sku', 'KB-001')->firstOrFail();
-        $this->app->make(ReservationService::class)->create($owner->id, $product->id, 2, 'seed-check');
+        ReservationService::create($owner->id, $product->id, 2, 'seed-check');
 
         $this->seed();
         $this->assertDatabaseCount('users', 2);
@@ -67,7 +67,7 @@ class DemoDataTest extends TestCase
                 ->map(fn (object $token): array => (array) $token)
                 ->all()
         );
-        $this->assertSame('Run php artisan db:seed first.'.PHP_EOL, Artisan::output());
+        $this->assertSame('Run php artisan db:seed first.' . PHP_EOL, Artisan::output());
         $this->assertDatabaseCount('users', 2);
     }
 

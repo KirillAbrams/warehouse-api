@@ -2,89 +2,89 @@ name: warehouse-api
 
 # Shared application, worker and scheduler runtime.
 x-php: &php
-  build:
-    context: .
-    target: testing
-  image: ${COMPOSE_PROJECT_NAME:-warehouse-api}-php:8.4.27
-  working_dir: /var/www/html
-  env_file: .env
-  volumes:
-    - .:/var/www/html
-  depends_on:
-    postgres:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
+    build:
+        context: .
+        target: testing
+    image: ${COMPOSE_PROJECT_NAME:-warehouse-api}-php:8.4.27
+    working_dir: /var/www/html
+    env_file: .env
+    volumes:
+        - .:/var/www/html
+    depends_on:
+        postgres:
+            condition: service_healthy
+        redis:
+            condition: service_healthy
 
 services:
-  # Handle application requests through PHP-FPM.
-  app:
-    <<: *php
-    command: php-fpm
-    healthcheck:
-      test: [CMD, php-fpm, -t]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # Handle application requests through PHP-FPM.
+    app:
+        <<: *php
+        command: php-fpm
+        healthcheck:
+            test: [CMD, php-fpm, -t]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  # Expose the API on the local host interface.
-  api:
-    image: nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
-    ports:
-      - "127.0.0.1:${API_PORT:-8187}:80"
-    volumes:
-      - ./public:/var/www/html/public:ro
-      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      app:
-        condition: service_healthy
-    healthcheck:
-      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/up]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # Expose the API on the local host interface.
+    api:
+        image: nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
+        ports:
+            - "127.0.0.1:${API_PORT:-8187}:80"
+        volumes:
+            - ./public:/var/www/html/public:ro
+            - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/up]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  # Process reservation expiration jobs.
-  worker:
-    <<: *php
-    command: php artisan queue:work redis --queue=reservations --sleep=1 --tries=3 --timeout=30 --no-interaction
-    restart: unless-stopped
+    # Process reservation expiration jobs.
+    worker:
+        <<: *php
+        command: php artisan queue:work redis --queue=reservations --sleep=1 --tries=3 --timeout=30 --no-interaction
+        restart: unless-stopped
 
-  # Rediscover expired reservations on schedule.
-  scheduler:
-    <<: *php
-    command: php artisan schedule:work --no-interaction
-    restart: unless-stopped
+    # Rediscover expired reservations on schedule.
+    scheduler:
+        <<: *php
+        command: php artisan schedule:work --no-interaction
+        restart: unless-stopped
 
-  # Persist users, inventory and reservations across restarts.
-  postgres:
-    image: postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
-    environment:
-      POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql
-      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
-    healthcheck:
-      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 2s
-      timeout: 5s
-      retries: 20
+    # Persist users, inventory and reservations across restarts.
+    postgres:
+        image: postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
+        environment:
+            POSTGRES_DB: ${DB_DATABASE}
+            POSTGRES_USER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        volumes:
+            - postgres-data:/var/lib/postgresql
+            - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+        healthcheck:
+            test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 2s
+            timeout: 5s
+            retries: 20
 
-  # Store queue messages and cached catalogue data.
-  redis:
-    image: redis:8.2.11-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: [CMD, redis-cli, ping]
-      interval: 2s
-      timeout: 5s
-      retries: 20
+    # Store queue messages and cached catalogue data.
+    redis:
+        image: redis:8.2.11-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
+        command: redis-server --appendonly yes
+        volumes:
+            - redis-data:/data
+        healthcheck:
+            test: [CMD, redis-cli, ping]
+            interval: 2s
+            timeout: 5s
+            retries: 20
 
 # Preserve these volumes during an ordinary stop.
 volumes:
-  postgres-data:
-  redis-data:
+    postgres-data:
+    redis-data:

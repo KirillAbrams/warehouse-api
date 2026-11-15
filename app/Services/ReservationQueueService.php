@@ -10,18 +10,16 @@ use Predis\Transaction\MultiExec;
 
 class ReservationQueueService
 {
-    public function __construct(private Factory $queues) {}
-
     /**
      * Read all Redis queue states atomically and collect expiration IDs.
      *
      * @return array<int, true>
      */
-    public function getQueuedReservationIds(): array
+    public static function getQueuedReservationIds(): array
     {
-        $queue = $this->queues->connection('redis');
+        $queue = app(Factory::class)->connection('redis');
 
-        if (! $queue instanceof RedisQueue) {
+        if (!$queue instanceof RedisQueue) {
             throw new LogicException('Expiration dispatch requires the Redis queue.');
         }
 
@@ -32,8 +30,8 @@ class ReservationQueueService
         $states = $queue->getConnection()
             ->command('transaction', [static function (MultiExec $transaction) use ($key): void {
                 $transaction->lrange($key, 0, -1);
-                $transaction->zrange($key.':reserved', 0, -1);
-                $transaction->zrange($key.':delayed', 0, -1);
+                $transaction->zrange($key . ':reserved', 0, -1);
+                $transaction->zrange($key . ':delayed', 0, -1);
             }]);
 
         $ids = [];
@@ -42,7 +40,7 @@ class ReservationQueueService
             foreach ($payloads as $payload) {
                 $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
 
-                if (! \in_array($data['data']['commandName'] ?? null, [ExpireReservationJob::class, ExpireReservationJob::LEGACY_CLASS], true)) {
+                if (!\in_array($data['data']['commandName'] ?? null, [ExpireReservationJob::class, ExpireReservationJob::LEGACY_CLASS], true)) {
                     continue;
                 }
 
@@ -52,7 +50,7 @@ class ReservationQueueService
                     // Accept messages written before explicit reservation metadata was introduced.
                     $job = unserialize($data['data']['command'], ['allowed_classes' => [ExpireReservationJob::class, ExpireReservationJob::LEGACY_CLASS]]);
 
-                    if (! $job instanceof ExpireReservationJob) {
+                    if (!$job instanceof ExpireReservationJob) {
                         throw new LogicException('Invalid legacy expiration payload.');
                     }
 

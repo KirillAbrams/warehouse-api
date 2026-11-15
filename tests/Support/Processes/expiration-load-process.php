@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
-require dirname(__DIR__, 3).'/vendor/autoload.php';
-$app = require dirname(__DIR__, 3).'/bootstrap/app.php';
+require dirname(__DIR__, 3) . '/vendor/autoload.php';
+$app = require dirname(__DIR__, 3) . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 if (config('app.env') !== 'testing' || DB::scalar('SELECT current_database()') !== 'warehouse_test'
     || config('database.redis.options.prefix') !== 'warehouse_test_') {
@@ -33,7 +33,7 @@ try {
     for ($index = 0; $index < 1000; $index++) {
         $rows[] = [
             'user_id' => $owner->id, 'product_id' => $product->id, 'quantity' => 1,
-            'idempotency_key' => 'load-'.$index, 'status' => 'reserved',
+            'idempotency_key' => 'load-' . $index, 'status' => 'reserved',
             'created_at' => $now->subMinutes(20)->format('Y-m-d H:i:s.uP'),
             'expires_at' => $now->subMinutes(10)->format('Y-m-d H:i:s.uP'),
             'updated_at' => $now->subMinutes(20)->format('Y-m-d H:i:s.uP'),
@@ -69,4 +69,4 @@ try {
     $owner->delete();
 }
 
-echo json_encode($report, JSON_THROW_ON_ERROR).PHP_EOL;
+echo json_encode($report, JSON_THROW_ON_ERROR) . PHP_EOL;

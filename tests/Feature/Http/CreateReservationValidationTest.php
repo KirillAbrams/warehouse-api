@@ -101,8 +101,8 @@ class CreateReservationValidationTest extends TestCase
             'expires_at',
             'finalized_at',
         ] as $field) {
-            $cases[$field.' value'] = [$field, 'client-controlled'];
-            $cases[$field.' null'] = [$field, null];
+            $cases[$field . ' value'] = [$field, 'client-controlled'];
+            $cases[$field . ' null'] = [$field, null];
         }
 
         return $cases;

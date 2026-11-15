@@ -14,9 +14,9 @@ class DemoTokens extends Command
     /**
      * Print new demo tokens after both replacements commit.
      */
-    public function handle(DemoTokenService $rotate): int
+    public function handle(): int
     {
-        $tokens = $rotate->rotate();
+        $tokens = DemoTokenService::rotate();
 
         if ($tokens === null) {
             $this->error('Run php artisan db:seed first.');
@@ -25,7 +25,7 @@ class DemoTokens extends Command
         }
 
         foreach ($tokens as $email => $token) {
-            $this->line($email.' '.$token);
+            $this->line($email . ' ' . $token);
         }
 
         return self::SUCCESS;

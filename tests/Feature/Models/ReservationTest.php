@@ -18,10 +18,9 @@ class ReservationTest extends TestCase
         $otherOwner = User::factory()->create();
         $product = Product::factory()->create();
         $otherProduct = Product::factory()->create();
-        $create = $this->app->make(ReservationService::class);
-        $first = $create->create($owner->id, $product->id, 1, 'first')['reservation'];
-        $second = $create->create($otherOwner->id, $product->id, 1, 'second')['reservation'];
-        $third = $create->create($owner->id, $otherProduct->id, 1, 'other-product')['reservation'];
+        $first = ReservationService::create($owner->id, $product->id, 1, 'first');
+        $second = ReservationService::create($otherOwner->id, $product->id, 1, 'second');
+        $third = ReservationService::create($owner->id, $otherProduct->id, 1, 'other-product');
 
         $first->load(['user', 'product']);
         $second->load(['user', 'product']);

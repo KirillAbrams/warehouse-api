@@ -13,7 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Reservation extends Model
 {
-    /** @var list<string> */
+    /**
+     * Define the fields accepted when creating or updating the model.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'user_id',
         'product_id',
@@ -26,7 +30,28 @@ class Reservation extends Model
         'updated_at',
     ];
 
+    /**
+     * Preserve microseconds in reservation deadlines and finalization timestamps.
+     *
+     * @var string
+     */
     protected $dateFormat = 'Y-m-d H:i:s.u';
+
+    /**
+     * Convert stored values to the types used by the application.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'user_id' => 'integer',
+        'product_id' => 'integer',
+        'quantity' => 'integer',
+        'status' => ReservationStatusEnum::class,
+        'expires_at' => 'immutable_datetime',
+        'finalized_at' => 'immutable_datetime',
+        'created_at' => 'immutable_datetime',
+        'updated_at' => 'immutable_datetime',
+    ];
 
     /**
      * Get the reservation owner.
@@ -49,16 +74,47 @@ class Reservation extends Model
     }
 
     /**
-     * @var array<string, string>
+     * Confirm stock after the service has locked this reservation and its product.
      */
-    protected $casts = [
-        'user_id' => 'integer',
-        'product_id' => 'integer',
-        'quantity' => 'integer',
-        'status' => ReservationStatusEnum::class,
-        'expires_at' => 'immutable_datetime',
-        'finalized_at' => 'immutable_datetime',
-        'created_at' => 'immutable_datetime',
-        'updated_at' => 'immutable_datetime',
-    ];
+    public function setConfirmed(Product $product, CarbonImmutable $now): void
+    {
+        $product->reserved_stock -= $this->quantity;
+        $product->confirmed_stock += $this->quantity;
+        $product->save();
+
+        $this->status = ReservationStatusEnum::CONFIRMED;
+        $this->finalized_at = $now;
+        $this->updated_at = $now;
+        $this->save();
+    }
+
+    /**
+     * Return cancelled stock within the service's existing transaction.
+     */
+    public function setCancelled(Product $product, CarbonImmutable $now): void
+    {
+        $product->reserved_stock -= $this->quantity;
+        $product->available_stock += $this->quantity;
+        $product->save();
+
+        $this->status = ReservationStatusEnum::CANCELLED;
+        $this->finalized_at = $now;
+        $this->updated_at = $now;
+        $this->save();
+    }
+
+    /**
+     * Return expired stock after the locked deadline check has passed.
+     */
+    public function setExpired(Product $product, CarbonImmutable $now): void
+    {
+        $product->reserved_stock -= $this->quantity;
+        $product->available_stock += $this->quantity;
+        $product->save();
+
+        $this->status = ReservationStatusEnum::EXPIRED;
+        $this->finalized_at = $now;
+        $this->updated_at = $now;
+        $this->save();
+    }
 }

@@ -12,30 +12,28 @@ use Predis\PredisException;
 
 class ProductService
 {
-    public function __construct(private Repository $cache) {}
-
     /**
      * Cache page data while rebuilding links for the current request.
      *
-     * @return LengthAwarePaginator<int, array{id: int, sku: string, name: string, available_stock: int}>
+     * @return LengthAwarePaginator<int, Product>
      */
-    public function paginate(int $page, int $perPage): LengthAwarePaginator
+    public static function paginate(int $page, int $perPage): LengthAwarePaginator
     {
         // Read PostgreSQL on a cache miss or a Redis failure.
-        $data = $this->remember("page:{$page}:{$perPage}", function () use ($page, $perPage): array {
+        $data = self::remember("page:{$page}:{$perPage}", function () use ($page, $perPage): array {
             $products = Product::query()
                 ->orderBy('id')
                 ->paginate($perPage, ['id', 'sku', 'name', 'available_stock'], 'page', $page);
 
             return [
                 'items' => $products->getCollection()
-                    ->map(fn (Product $product): array => $this->productData($product))
+                    ->map(fn (Product $product): array => self::productData($product))
                     ->all(),
                 'total' => $products->total(),
             ];
         });
 
-        return new LengthAwarePaginator($data['items'], $data['total'], $perPage, $page, [
+        return new LengthAwarePaginator(Product::hydrate($data['items']), $data['total'], $perPage, $page, [
             'path' => LengthAwarePaginator::resolveCurrentPath(),
         ]);
     }
@@ -43,16 +41,18 @@ class ProductService
     /**
      * Get a product from the cache or PostgreSQL.
      *
-     * @return array{id: int, sku: string, name: string, available_stock: int}
+     * @return Product
      */
-    public function find(int $id): array
+    public static function find(int $id): Product
     {
         // Use the same cache failure policy for individual products.
-        return $this->remember("product:{$id}", function () use ($id): array {
+        $data = self::remember("product:{$id}", function () use ($id): array {
             $product = Product::query()->find($id) ?? throw ApiException::notFound('product');
 
-            return $this->productData($product);
+            return self::productData($product);
         });
+
+        return Product::hydrate([$data])->sole();
     }
 
     /**
@@ -60,7 +60,7 @@ class ProductService
      *
      * @return array{id: int, sku: string, name: string, available_stock: int}
      */
-    private function productData(Product $product): array
+    private static function productData(Product $product): array
     {
         return [
             'id' => $product->id,
@@ -75,14 +75,14 @@ class ProductService
      *
      * @template T
      *
-     * @param  Closure(): T  $load
+     * @param Closure(): T $load
      * @return T
      */
-    private function remember(string $key, Closure $load): mixed
+    private static function remember(string $key, Closure $load): mixed
     {
         try {
-            return $this->cache->remember(
-                'catalog:v1:'.$key,
+            return app(Repository::class)->remember(
+                'catalog:v1:' . $key,
                 config()->integer('reservations.catalog_ttl_seconds'),
                 $load,
             );

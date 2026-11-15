@@ -45,7 +45,7 @@ class LegacyExpirationJobTest extends TestCase
         $payload = json_decode(file_get_contents(base_path('tests/Fixtures/expiration-v1.json')), true, flags: JSON_THROW_ON_ERROR);
         $payload['data']['command'] = str_replace(
             's:13:"reservationId";i:42;',
-            's:13:"reservationId";i:'.$reservation->id.';',
+            's:13:"reservationId";i:' . $reservation->id . ';',
             $payload['data']['command'],
         );
         if ($hasMetadata) {
@@ -64,7 +64,7 @@ class LegacyExpirationJobTest extends TestCase
         try {
             for ($delivery = 0; $delivery < 2; $delivery++) {
                 $queue->pushRaw(json_encode($payload, JSON_THROW_ON_ERROR), 'reservations');
-                $this->assertSame([$reservation->id => true], $this->app->make(ReservationQueueService::class)->getQueuedReservationIds());
+                $this->assertSame([$reservation->id => true], ReservationQueueService::getQueuedReservationIds());
                 $job = $queue->pop('reservations');
                 $this->assertNotNull($job);
                 $job->fire();

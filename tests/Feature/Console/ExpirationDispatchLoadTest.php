@@ -39,7 +39,7 @@ class ExpirationDispatchLoadTest extends TestCase
         $this->assertDatabaseCount('users', 0);
         $this->assertDatabaseCount('products', 0);
         $this->assertDatabaseCount('reservations', 0);
-        if (! is_dir(storage_path('framework/testing'))) {
+        if (!is_dir(storage_path('framework/testing'))) {
             mkdir(storage_path('framework/testing'), recursive: true);
         }
         file_put_contents(

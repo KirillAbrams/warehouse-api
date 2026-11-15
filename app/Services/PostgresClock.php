@@ -2,13 +2,18 @@
 
 namespace App\Services;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 
-class PostgresClock implements Clock
+class PostgresClock implements ClockInterface
 {
-    public function __construct(private ConnectionInterface $database) {}
+    /**
+     * Use the application connection so clock reads follow its transaction locks.
+     */
+    public function __construct(private ConnectionInterface $database)
+    {
+    }
 
     /**
      * Read PostgreSQL wall-clock time rather than transaction start time.

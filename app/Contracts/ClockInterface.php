@@ -4,7 +4,7 @@ namespace App\Contracts;
 
 use Carbon\CarbonImmutable;
 
-interface Clock
+interface ClockInterface
 {
     /**
      * Return fresh UTC time after any lock wait.

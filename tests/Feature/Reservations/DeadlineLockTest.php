@@ -21,15 +21,14 @@ class DeadlineLockTest extends TestCase
     {
         $owner = User::factory()->create();
         $product = Product::factory()->create();
-        $reservation = $this->app->make(ReservationService::class)
-            ->create($owner->id, $product->id, 2, 'deadline')['reservation'];
+        $reservation = ReservationService::create($owner->id, $product->id, 2, 'deadline');
         $configuration = config('database.connections.pgsql');
         $locker = new PDO(
             "pgsql:host={$configuration['host']};port={$configuration['port']};dbname={$configuration['database']}",
             $configuration['username'],
             $configuration['password']
         );
-        $gate = 'warehouse:deadline:start:'.$reservation->id;
+        $gate = 'warehouse:deadline:start:' . $reservation->id;
         $statement = $locker->prepare('SELECT pg_advisory_lock(hashtextextended(?, 0))');
         $statement->execute([$gate]);
         $gateHeld = true;
@@ -85,7 +84,7 @@ class DeadlineLockTest extends TestCase
             do {
                 $waiting = (int) DB::scalar(
                     "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'warehouse-deadline-child' AND datname = 'warehouse_test' AND wait_event_type = 'Lock' AND strpos(query, ?) > 0",
-                    ['"'.$table.'"']
+                    ['"' . $table . '"']
                 );
                 if ($waiting === 1) {
                     break;

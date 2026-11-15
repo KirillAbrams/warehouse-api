@@ -24,12 +24,11 @@ class QueuedReservationExpirationsTest extends TestCase
                 ->with('redis')
                 ->andReturn(new SyncQueue);
         });
-        $query = $this->app->make(ReservationQueueService::class);
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Expiration dispatch requires the Redis queue.');
 
-        $query->getQueuedReservationIds();
+        ReservationQueueService::getQueuedReservationIds();
     }
 
     #[DataProvider('invalidLegacyCommands')]
@@ -51,7 +50,7 @@ class QueuedReservationExpirationsTest extends TestCase
             $before = $queue->pendingJobs('reservations')->sole()->payload;
 
             try {
-                $this->app->make(ReservationQueueService::class)->getQueuedReservationIds();
+                ReservationQueueService::getQueuedReservationIds();
                 $this->fail('A legacy envelope must contain the expected expiration job.');
             } catch (LogicException $exception) {
                 $this->assertSame('Invalid legacy expiration payload.', $exception->getMessage());

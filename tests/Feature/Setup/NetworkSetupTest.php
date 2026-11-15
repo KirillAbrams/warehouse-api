@@ -14,18 +14,18 @@ class NetworkSetupTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->directory = sys_get_temp_dir().'/warehouse-network-'.bin2hex(random_bytes(8));
-        mkdir($this->directory.'/bin', 0777, true);
-        mkdir($this->directory.'/commands');
-        copy(base_path('bin/setup'), $this->directory.'/bin/setup');
+        $this->directory = sys_get_temp_dir() . '/warehouse-network-' . bin2hex(random_bytes(8));
+        mkdir($this->directory . '/bin', 0777, true);
+        mkdir($this->directory . '/commands');
+        copy(base_path('bin/setup'), $this->directory . '/bin/setup');
         if (is_file(base_path('bin/prepare-network'))) {
-            copy(base_path('bin/prepare-network'), $this->directory.'/bin/prepare-network');
-            chmod($this->directory.'/bin/prepare-network', 0755);
+            copy(base_path('bin/prepare-network'), $this->directory . '/bin/prepare-network');
+            chmod($this->directory . '/bin/prepare-network', 0755);
         }
-        copy(base_path('.env.example'), $this->directory.'/.env.example');
+        copy(base_path('.env.example'), $this->directory . '/.env.example');
         foreach (['docker', 'docker-compose'] as $name) {
-            copy(base_path('tests/Support/Processes/docker-network.php'), $this->directory.'/commands/'.$name);
-            chmod($this->directory.'/commands/'.$name, 0755);
+            copy(base_path('tests/Support/Processes/docker-network.php'), $this->directory . '/commands/' . $name);
+            chmod($this->directory . '/commands/' . $name, 0755);
         }
         $this->writeState([]);
     }
@@ -43,7 +43,7 @@ class NetworkSetupTest extends TestCase
         $state = $this->readState();
         $this->assertSame('warehouse-network-test:default', $state['network']);
         $this->assertSame(['10.240.0.0/24'], $state['subnets']);
-        $this->assertTrue(is_file($this->directory.'/.env'));
+        $this->assertTrue(is_file($this->directory . '/.env'));
         $this->assertCallsAreScoped($state);
     }
 
@@ -63,7 +63,7 @@ class NetworkSetupTest extends TestCase
         $this->assertSame(count($state['subnets']), count(array_unique($state['subnets'])));
         $this->assertCallsAreScoped($state);
         if ($success) {
-            $this->assertSame($state['project'].':default', $state['network']);
+            $this->assertSame($state['project'] . ':default', $state['network']);
         }
     }
 
@@ -94,14 +94,14 @@ class NetworkSetupTest extends TestCase
     {
         $process = $this->runCommand('prepare-network', false);
         $this->assertTrue($process->isSuccessful(), $process->getErrorOutput());
-        $this->assertStringNotContainsString('do-not-print-this-value', $process->getOutput().$process->getErrorOutput());
+        $this->assertStringNotContainsString('do-not-print-this-value', $process->getOutput() . $process->getErrorOutput());
     }
 
     public function test_generated_overlap_sequences_remain_bounded_and_idempotent(): void
     {
         for ($case = 0; $case < 16; $case++) {
             $overlaps = $case % 5;
-            $this->writeState(['project' => 'warehouse-case-'.$case, 'overlaps' => $overlaps]);
+            $this->writeState(['project' => 'warehouse-case-' . $case, 'overlaps' => $overlaps]);
             $first = $this->runCommand('prepare-network');
             $this->assertTrue($first->isSuccessful(), $first->getErrorOutput());
             $before = $this->readState();
@@ -119,7 +119,7 @@ class NetworkSetupTest extends TestCase
 
     private function writeState(array $overrides): void
     {
-        file_put_contents($this->directory.'/state.json', json_encode(array_replace([
+        file_put_contents($this->directory . '/state.json', json_encode(array_replace([
             'project' => 'warehouse-network-test', 'plugin' => true, 'config_error' => false,
             'network' => null, 'pool_exhausted' => true, 'standard_error' => null,
             'explicit_error' => null, 'overlaps' => 0, 'race' => null,
@@ -129,16 +129,16 @@ class NetworkSetupTest extends TestCase
 
     private function readState(): array
     {
-        return json_decode(file_get_contents($this->directory.'/state.json'), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(file_get_contents($this->directory . '/state.json'), true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function runCommand(string $name, bool $allowTrace = true): Process
     {
         $trace = $allowTrace && getenv('NETWORK_SHELL_COVERAGE') === '1';
         $arguments = $trace ? ['sh', '-x'] : ['sh'];
-        $process = new Process([...$arguments, $this->directory.'/bin/'.$name], $this->directory, [
-            'PATH' => $this->directory.'/commands:'.getenv('PATH'),
-            'DOCKER_NETWORK_TEST_STATE' => $this->directory.'/state.json',
+        $process = new Process([...$arguments, $this->directory . '/bin/' . $name], $this->directory, [
+            'PATH' => $this->directory . '/commands:' . getenv('PATH'),
+            'DOCKER_NETWORK_TEST_STATE' => $this->directory . '/state.json',
             'PS4' => '+${LINENO}: ',
         ]);
         $process->setTimeout(30);
@@ -146,7 +146,7 @@ class NetworkSetupTest extends TestCase
         if ($trace) {
             file_put_contents(
                 storage_path('framework/testing/network-shell-trace.jsonl'),
-                json_encode(['script' => $name, 'trace' => $process->getErrorOutput()], JSON_THROW_ON_ERROR)."\n",
+                json_encode(['script' => $name, 'trace' => $process->getErrorOutput()], JSON_THROW_ON_ERROR) . "\n",
                 FILE_APPEND,
             );
         }
@@ -161,9 +161,9 @@ class NetworkSetupTest extends TestCase
                 continue;
             }
             $this->assertContains($call[2], ['inspect', 'create']);
-            $this->assertSame($state['project'].'_default', $call[array_key_last($call)]);
+            $this->assertSame($state['project'] . '_default', $call[array_key_last($call)]);
             if ($call[2] === 'create') {
-                $this->assertContains('com.docker.compose.project='.$state['project'], $call);
+                $this->assertContains('com.docker.compose.project=' . $state['project'], $call);
                 $this->assertContains('com.docker.compose.network=default', $call);
             }
         }

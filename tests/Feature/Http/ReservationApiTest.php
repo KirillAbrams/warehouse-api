@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Http;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use App\Enums\ReservationStatusEnum;
 use App\Jobs\ExpireReservationJob;
 use App\Models\Product;
@@ -34,7 +34,7 @@ class ReservationApiTest extends TestCase
         parent::setUp();
 
         $this->clock = new MutableClock(CarbonImmutable::parse('2026-11-15T10:00:00Z'));
-        $this->app->instance(Clock::class, $this->clock);
+        $this->app->instance(ClockInterface::class, $this->clock);
         $this->owner = User::factory()->create();
         $this->authenticate($this->owner);
     }
@@ -177,13 +177,13 @@ class ReservationApiTest extends TestCase
         $product = Product::factory()->create();
         $id = $this->reserve($product)->assertCreated()->json('data.id');
         if (in_array($state, ['confirmed', 'cancelled'], true)) {
-            $this->postJson("/api/v1/reservations/{$id}/".($state === 'confirmed' ? 'confirm' : 'cancel'))->assertOk();
+            $this->postJson("/api/v1/reservations/{$id}/" . ($state === 'confirmed' ? 'confirm' : 'cancel'))->assertOk();
         }
         if (in_array($state, ['due', 'expired'], true)) {
             $this->clock->instant = $this->clock->instant->addMinutes(10);
         }
         if ($state === 'expired') {
-            $this->app->make(ReservationService::class)->expire($id);
+            ReservationService::expire($id);
         }
         $response = $this->postJson("/api/v1/reservations/{$id}/{$action}")->assertStatus($expectedStatus);
         if ($expectedCode !== null) {
@@ -224,9 +224,9 @@ class ReservationApiTest extends TestCase
         $id = $first->json('data.id');
         if ($state === 'expired') {
             $this->clock->instant = $this->clock->instant->addMinutes(10);
-            $this->app->make(ReservationService::class)->expire($id);
+            ReservationService::expire($id);
         } else {
-            $this->postJson("/api/v1/reservations/{$id}/".($state === 'confirmed' ? 'confirm' : 'cancel'))->assertOk();
+            $this->postJson("/api/v1/reservations/{$id}/" . ($state === 'confirmed' ? 'confirm' : 'cancel'))->assertOk();
         }
         $this->clock->instant = $this->clock->instant->addDay();
         $this->reserve($product)->assertOk()->assertJsonPath('data.id', $id)
@@ -262,7 +262,7 @@ class ReservationApiTest extends TestCase
         foreach (['GET' => [''], 'POST' => ['/confirm', '/cancel']] as $method => $suffixes) {
             foreach ($suffixes as $suffix) {
                 $foreign = $this->json($method, "/api/v1/reservations/{$id}{$suffix}")->assertNotFound();
-                $this->json($method, '/api/v1/reservations/999999'.$suffix)
+                $this->json($method, '/api/v1/reservations/999999' . $suffix)
                     ->assertNotFound()
                     ->assertExactJson($foreign->json());
             }
@@ -287,16 +287,15 @@ class ReservationApiTest extends TestCase
         $product = Product::factory()->create();
         $id = $this->reserve($product)->assertCreated()->json('data.id');
         $job = new ExpireReservationJob($id);
-        $expire = $this->app->make(ReservationService::class);
-        $job->handle($expire);
+        $job->handle();
         $this->assertStock($product, 3, 2, 0);
         $this->clock->instant = $this->clock->instant->addMinutes(10);
-        $job->handle($expire);
-        $job->handle($expire);
+        $job->handle();
+        $job->handle();
         $this->assertDatabaseHas('reservations', ['id' => $id, 'status' => 'expired']);
         $this->assertStock($product, 5, 0, 0);
         $job = new ExpireReservationJob(999999);
-        $job->handle($expire);
+        $job->handle();
         $this->assertStock($product, 5, 0, 0);
     }
 
@@ -306,7 +305,7 @@ class ReservationApiTest extends TestCase
         $id = $this->reserve($product)->assertCreated()->json('data.id');
         $this->postJson("/api/v1/reservations/{$id}/confirm")->assertOk();
         $this->clock->instant = $this->clock->instant->addDay();
-        (new ExpireReservationJob($id))->handle($this->app->make(ReservationService::class));
+        (new ExpireReservationJob($id))->handle();
         $this->assertStock($product, 3, 0, 2);
         $this->assertDatabaseHas('reservations', ['id' => $id, 'status' => 'confirmed']);
     }
@@ -335,15 +334,15 @@ class ReservationApiTest extends TestCase
             ->assertJsonPath('meta.total', 3);
         $this->getJson('/api/v1/products?per_page=101')->assertUnprocessable();
         $this->getJson('/api/v1/products?page=0')->assertUnprocessable();
-        $this->getJson('/api/v1/products/'.$product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
+        $this->getJson('/api/v1/products/' . $product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
         $this->reserve($product)->assertCreated();
-        $this->getJson('/api/v1/products/'.$product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
+        $this->getJson('/api/v1/products/' . $product->id)->assertOk()->assertJsonPath('data.available_quantity', 5);
         $this->reserve($product, 4, 'stale-catalog')
             ->assertConflict()
             ->assertJsonPath('error.code', 'insufficient_stock');
         $this->assertStock($product, 3, 2, 0);
         $this->travel(31)->seconds();
-        $this->getJson('/api/v1/products/'.$product->id)->assertOk()->assertJsonPath('data.available_quantity', 3);
+        $this->getJson('/api/v1/products/' . $product->id)->assertOk()->assertJsonPath('data.available_quantity', 3);
         $this->getJson('/api/v1/products/999999')->assertNotFound();
     }
 

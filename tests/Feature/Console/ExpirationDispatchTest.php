@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Console;
 
-use App\Contracts\Clock;
+use App\Contracts\ClockInterface;
 use App\Jobs\ExpireReservationJob;
 use App\Models\Product;
 use App\Models\Reservation;
@@ -35,7 +35,7 @@ class ExpirationDispatchTest extends TestCase
         $this->queue = Queue::connection('redis');
         $this->queue->clear('reservations');
         $this->clock = new MutableClock(CarbonImmutable::parse('2026-11-15T10:00:00.123456Z'));
-        $this->app->instance(Clock::class, $this->clock);
+        $this->app->instance(ClockInterface::class, $this->clock);
     }
 
     protected function tearDown(): void
@@ -198,7 +198,7 @@ class ExpirationDispatchTest extends TestCase
         $failed = false;
         Queue::createPayloadUsing(static function (string $connection, ?string $queue, array $payload) use ($second, &$failed): array {
             $job = $payload['data']['command'] ?? null;
-            if ($job instanceof ExpireReservationJob && $job->reservationId === $second->id && ! $failed) {
+            if ($job instanceof ExpireReservationJob && $job->reservationId === $second->id && !$failed) {
                 $failed = true;
                 throw new StreamInitException('Injected queue write failure.');
             }
@@ -231,11 +231,10 @@ class ExpirationDispatchTest extends TestCase
 
     private function reservation(): Reservation
     {
-        return $this->app->make(ReservationService::class)
-            ->create(User::factory()
-                ->create()
-                ->id, Product::factory()
-                ->create()
-                ->id, 1, 'dispatch')['reservation'];
+        return ReservationService::create(User::factory()
+            ->create()
+            ->id, Product::factory()
+            ->create()
+            ->id, 1, 'dispatch');
     }
 }

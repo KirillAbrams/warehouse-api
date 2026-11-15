@@ -21,7 +21,7 @@ final class ApiException extends RuntimeException implements ShouldntReport
      */
     public static function notFound(string $resource): self
     {
-        return new self(404, $resource.'_not_found', ucfirst($resource).' not found.');
+        return new self(404, $resource . '_not_found', ucfirst($resource) . ' not found.');
     }
 
     /**
